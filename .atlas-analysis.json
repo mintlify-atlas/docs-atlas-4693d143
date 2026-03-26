@@ -1,28 +1,11 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "name": "Pragma",
+  "projectType": "frontend",
+  "projectName": "Pragma",
+  "projectDescription": "Canonical's design system toolkit providing React and Svelte components, CSS styles, design tokens, and developer tooling for building consistent user interfaces across Canonical's web properties.",
   "theme": "willow",
-  "colors": {
-    "primary": "#848c8e",
-    "light": "#11161e",
-    "dark": "#cfd0d2"
-  },
-  "favicon": "https://media.brand.dev/2b01fe20-c04b-4a1d-a2f9-1d2789c50a7a.jpg",
-  "logo": {
-    "light": "https://media.brand.dev/5ffd6ce4-2434-4b4b-920a-f8cacac8b48b.svg",
-    "dark": "https://media.brand.dev/5ffd6ce4-2434-4b4b-920a-f8cacac8b48b.svg"
-  },
-  "navbar": {
-    "primary": {
-      "type": "github",
-      "href": "https://github.com/canonical/pragma"
-    }
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/canonical/pragma"
-    }
-  },
+  "primaryColor": "#848c8e",
+  "lightColor": "#11161e",
+  "darkColor": "#cfd0d2",
   "navigation": {
     "tabs": [
       {
@@ -103,5 +86,27 @@
         ]
       }
     ]
-  }
+  },
+  "keyFeatures": [
+    "React 19 and Svelte 5 component libraries with tiered architecture (Global, App, Domain-specific)",
+    "Pure CSS design system with layered style packages and CSS custom property tokens",
+    "Modifier family type system for consistent component variants (severity, density, intent)",
+    "react-hook-form integration with extensible custom fields and middleware",
+    "Architecture validation via webarchitect with JSON Schema rulesets",
+    "Yeoman/Summon generators for scaffolding components and packages following conventions",
+    "Storybook per-package with Chromatic visual regression testing",
+    "Monorepo with Lerna fixed versioning and Nx task caching"
+  ],
+  "publicApiSurface": [
+    "@canonical/react-ds-global: Accordion, Badge, Breadcrumbs, Button, Card, Chip, Icon, Label, Link, Rule, Section, SkipLink, Tile, Timeline, Tooltip",
+    "@canonical/react-ds-global-form: Field, Form, withWrapper, InputProps",
+    "@canonical/react-ds-app: Navigation, Toolbar, Button",
+    "@canonical/ds-types: ModifierFamily<T>",
+    "@canonical/ds-assets: SVG icon assets",
+    "@canonical/utils: debounce, throttle, invariant, casing utilities, pluralize, humanizeNumber",
+    "@canonical/styles: Aggregated CSS layers import",
+    "@canonical/styles-primitives-canonical: CSS custom property design tokens",
+    "@canonical/webarchitect: CLI with library, tool, tool-ts rulesets",
+    "summon CLI: component and package scaffolding generators"
+  ]
 }

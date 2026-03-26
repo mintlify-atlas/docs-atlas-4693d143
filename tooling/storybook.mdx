@@ -1,0 +1,189 @@
+---
+title: "Storybook"
+description: "Per-package Storybook setup, shared configuration, addons, and visual regression testing with Chromatic."
+keywords: ["storybook", "stories", "chromatic", "visual regression", "msw", "baseline grid"]
+---
+
+Pragma runs Storybook per package rather than at the monorepo root. Each component package has its own Storybook server with package-specific stories and documentation.
+
+## Starting Storybook
+
+<Steps>
+  <Step title="Navigate to a component package">
+    ```bash
+    cd packages/react/ds-global
+    ```
+  </Step>
+
+  <Step title="Start the Storybook server">
+    ```bash
+    bun run storybook
+    ```
+
+    The server starts at `http://localhost:6006`.
+  </Step>
+</Steps>
+
+Most component packages also provide `bun run test:vitest:watch` for test-driven development alongside Storybook.
+
+## Shared configuration
+
+All Storybook packages use the `@canonical/storybook-config` factory from `configs/storybook`. This keeps configuration consistent and reduces boilerplate in individual packages.
+
+**`.storybook/main.ts`**
+
+```typescript
+import { createConfig } from "@canonical/storybook-config";
+
+export default createConfig("react"); // or "svelte" or "lit"
+```
+
+The factory registers a standard set of addons, configures the Vite-based framework, and points the story glob at `../src/**/*.stories.@(js|jsx|mjs|ts|tsx|svelte)`.
+
+**`.storybook/preview.ts`**
+
+The shared `previewConfig` export provides consistent story sorting, theme switching, and `autodocs`:
+
+```typescript
+import { previewConfig } from "@canonical/storybook-config";
+
+export default previewConfig;
+```
+
+Story order is: Introduction, Stable, Beta, Experimental, then everything else.
+
+## Addons
+
+The `createConfig` factory registers all standard addons automatically. Two custom addons are specific to Pragma:
+
+### storybook-addon-msw
+
+`@canonical/storybook-addon-msw` integrates [Mock Service Worker](https://mswjs.io/) into Storybook. Use it to mock API responses in stories without running a backend.
+
+```typescript
+import type { Meta, StoryObj } from "@storybook/react";
+import { http, HttpResponse } from "msw";
+import { UserProfile } from "./UserProfile";
+
+const meta: Meta<typeof UserProfile> = {
+  component: UserProfile,
+};
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get("/api/user", () =>
+          HttpResponse.json({ id: 1, name: "Jane Doe" })
+        ),
+      ],
+    },
+  },
+};
+
+export const Error: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get("/api/user", () =>
+          HttpResponse.json({ error: "Not found" }, { status: 404 })
+        ),
+      ],
+    },
+  },
+};
+```
+
+A toolbar button lets you toggle MSW globally. The MSW panel shows which handlers are active for the current story.
+
+### storybook-addon-baseline-grid
+
+`@canonical/storybook-addon-baseline-grid` overlays a baseline grid on stories to verify typography alignment. Press `g` to toggle the grid, or use the toolbar button.
+
+The grid appearance is configurable via CSS custom properties:
+
+```css
+:root {
+  --baseline-grid-color: rgba(255, 0, 0, 0.2);
+  --baseline-height: 0.5rem; /* should match your typography baseline */
+}
+```
+
+## Autodocs
+
+The `previewConfig` sets `tags: ["autodocs"]` globally. Storybook automatically generates a documentation page for each component from its JSDoc comments and TypeScript prop types — no manual MDX required.
+
+Stories in the generated component files include this tag explicitly:
+
+```typescript
+const meta: Meta<typeof Button> = {
+  component: Button,
+  tags: ["autodocs"],
+};
+```
+
+## Story conventions
+
+Pragma follows a consistent naming convention for story exports:
+
+| Export name | When to use |
+|-------------|-------------|
+| `Default` | The component in its default state |
+| `Positive` | Success or positive feedback variant |
+| `Negative` | Error or destructive variant |
+| `Caution` | Warning variant |
+| `Information` | Informational variant |
+
+A typical story file:
+
+```typescript
+import type { Meta, StoryObj } from "@storybook/react";
+import { Button } from "./Button";
+
+const meta: Meta<typeof Button> = {
+  component: Button,
+  title: "Stable/Button",
+  tags: ["autodocs"],
+} satisfies Meta<typeof Button>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+  args: {
+    children: "Click me",
+  },
+};
+
+export const Positive: Story = {
+  args: {
+    children: "Success",
+    appearance: "positive",
+  },
+};
+```
+
+The `title` field maps to the sidebar grouping. Stable, Beta, and Experimental match the story sort order defined in `previewConfig`.
+
+## Visual regression testing with Chromatic
+
+Each component package has a dedicated Chromatic workflow triggered by path. Changes to `packages/react/ds-global` only run visual tests for that package, conserving Chromatic snapshots.
+
+Chromatic runs automatically on every pull request. Reviewers approve or reject visual diffs in the Chromatic UI before merging.
+
+<Tip>
+  When adding a new component, ensure it has at least a `Default` story so Chromatic captures a baseline snapshot on the first run.
+</Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Component structure" icon="folder-tree" href="/guides/component-structure">
+    File conventions that stories are part of.
+  </Card>
+  <Card title="CI/CD" icon="arrows-rotate" href="/guides/ci-cd">
+    How Chromatic integrates into the pull request workflow.
+  </Card>
+</CardGroup>

@@ -1,0 +1,430 @@
+---
+title: 'Custom Form Fields'
+description: 'Create custom input components that integrate with the ds-global-form Field system, including the withWrapper HOC, controlled components, and middleware.'
+keywords: ['custom fields', 'form', 'withWrapper', 'InputProps', 'middleware', 'react-hook-form']
+---
+
+The `Field` component supports a `inputType="custom"` option that accepts any input component satisfying the `InputProps` contract. This guide explains when to build custom fields, how to implement them, and how to extend them with middleware.
+
+## When to create a custom field
+
+Use a custom field when the built-in input types do not cover your use case:
+
+- Specialised inputs such as colour pickers, date range selectors, or rich text editors
+- Complex composite inputs such as address fields or phone numbers with country code prefix
+- Third-party component integration where the library controls its own DOM
+
+For simple variations of existing inputs — such as filtering an existing select's options — consider [middleware](#middleware) instead.
+
+## The InputProps type
+
+Custom fields must satisfy the `InputProps` type exported from `@canonical/react-ds-global-form`.
+
+```typescript
+import type { InputProps } from "@canonical/react-ds-global-form";
+
+type MyFieldProps = InputProps<{
+  // Additional props specific to this field
+  myCustomProp?: string;
+}>;
+```
+
+The base `InputProps` provides the following props that `withWrapper` injects automatically:
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `name` | `string` | Field name for form registration |
+| `registerProps` | `RegisterOptions` | react-hook-form registration options |
+| `aria-labelledby` | `string` | ID of the label element |
+| `aria-describedby` | `string` | ID of the description element |
+| `aria-errormessage` | `string` | ID of the error message element |
+| `aria-invalid` | `boolean` | Whether the field has a validation error |
+
+## The withWrapper HOC
+
+All custom fields must be wrapped with `withWrapper`. Without it, the field will not integrate with the form system.
+
+`withWrapper` provides:
+
+- **Form registration** via react-hook-form
+- **Label and description rendering**
+- **Error message display**
+- **ARIA attribute injection** for accessibility
+- **Middleware composition** support
+
+```typescript
+import { withWrapper } from "@canonical/react-ds-global-form";
+
+export const MyField = withWrapper<MyFieldProps>(MyFieldInput);
+```
+
+`withWrapper` accepts an optional second argument for configuration:
+
+```typescript
+export const MyFieldset = withWrapper<MyFieldProps>(MyFieldInput, {
+  mockLabel: true, // Renders <legend> instead of <label> (use for fieldsets)
+});
+```
+
+## Step-by-step: building a colour picker
+
+<Steps>
+  <Step title="Define the props type">
+    Import `InputProps` and extend it with any field-specific props:
+
+    ```typescript
+    import type { InputProps } from "@canonical/react-ds-global-form";
+
+    type ColorPickerProps = InputProps<{
+      swatches?: string[];
+      showHexInput?: boolean;
+    }>;
+    ```
+  </Step>
+
+  <Step title="Implement the input component">
+    Use `useFormContext` from react-hook-form to access form state. Pass the injected ARIA props to the underlying input element.
+
+    ```typescript
+    import { useFormContext } from "react-hook-form";
+
+    const ColorPickerInput = ({
+      name,
+      registerProps,
+      swatches = ["#ff0000", "#00ff00", "#0000ff"],
+      showHexInput = true,
+      "aria-labelledby": ariaLabelledby,
+      "aria-describedby": ariaDescribedby,
+      "aria-errormessage": ariaErrormessage,
+      "aria-invalid": ariaInvalid,
+    }: ColorPickerProps) => {
+      const { register, watch, setValue } = useFormContext();
+      const currentValue = watch(name);
+
+      const handleSwatchClick = (color: string) => {
+        setValue(name, color, { shouldValidate: true });
+      };
+
+      return (
+        <div className="color-picker">
+          <div className="swatches" role="listbox" aria-labelledby={ariaLabelledby}>
+            {swatches.map((color) => (
+              <button
+                key={color}
+                type="button"
+                role="option"
+                aria-selected={currentValue === color}
+                className={currentValue === color ? "selected" : ""}
+                style={{ backgroundColor: color }}
+                onClick={() => handleSwatchClick(color)}
+                aria-label={`Select color ${color}`}
+              />
+            ))}
+          </div>
+          {showHexInput && (
+            <input
+              type="text"
+              pattern="^#[0-9A-Fa-f]{6}$"
+              placeholder="#000000"
+              aria-labelledby={ariaLabelledby}
+              aria-describedby={ariaDescribedby}
+              aria-errormessage={ariaErrormessage}
+              aria-invalid={ariaInvalid}
+              {...register(name, {
+                ...registerProps,
+                pattern: {
+                  value: /^#[0-9A-Fa-f]{6}$/,
+                  message: "Enter a valid hex color (e.g., #E95420)",
+                },
+              })}
+            />
+          )}
+        </div>
+      );
+    };
+    ```
+  </Step>
+
+  <Step title="Wrap with withWrapper">
+    ```typescript
+    import { withWrapper } from "@canonical/react-ds-global-form";
+
+    export const ColorPicker = withWrapper<ColorPickerProps>(ColorPickerInput);
+    ```
+  </Step>
+
+  <Step title="Use with Field">
+    Pass the wrapped component as `CustomComponent` on a `Field` with `inputType="custom"`:
+
+    ```tsx
+    import { Field } from "@canonical/react-ds-global-form";
+    import { ColorPicker } from "./ColorPicker";
+
+    <Field
+      name="brandColor"
+      inputType="custom"
+      CustomComponent={ColorPicker}
+      label="Brand Color"
+      description="Choose your primary brand color"
+      swatches={["#E95420", "#0066CC", "#333333"]}
+    />
+    ```
+
+    Any additional props defined in `ColorPickerProps` (such as `swatches`) are passed directly through `Field`.
+  </Step>
+</Steps>
+
+## Controlled components
+
+The examples above use react-hook-form's uncontrolled approach via `register`. For third-party libraries that require a `value` prop, use the `Controller` component instead:
+
+```typescript
+import { Controller, useFormContext } from "react-hook-form";
+import { withWrapper } from "@canonical/react-ds-global-form";
+import type { InputProps } from "@canonical/react-ds-global-form";
+
+type MyFieldProps = InputProps<{
+  placeholder?: string;
+}>;
+
+const ControlledInput = ({ name, registerProps, ...props }: MyFieldProps) => {
+  const { control } = useFormContext();
+
+  return (
+    <Controller
+      name={name}
+      control={control}
+      rules={registerProps}
+      render={({ field }) => (
+        <ThirdPartyInput
+          value={field.value}
+          onChange={field.onChange}
+          onBlur={field.onBlur}
+          {...props}
+        />
+      )}
+    />
+  );
+};
+
+export const MyField = withWrapper<MyFieldProps>(ControlledInput);
+```
+
+## Middleware
+
+Middleware wraps field components to add cross-cutting behaviour without modifying the field itself. It is useful for:
+
+- Fetching data from APIs (e.g. populating a select with remote options)
+- Server-side validation
+- Dependent field updates (e.g. cascading selects)
+- Analytics tracking
+- Loading states
+
+### Middleware signature
+
+```typescript
+type Middleware<ComponentProps> = (
+  Component: React.ComponentType<ComponentProps>
+) => React.ComponentType<ComponentProps>;
+```
+
+A middleware is a factory function that receives a component and returns a new component with enhanced behaviour.
+
+### Built-in middleware
+
+Two middleware are included in the package:
+
+**`addRESTOptions`** — fetches options from an API and injects them as the `options` prop:
+
+```typescript
+import { addRESTOptions } from "@canonical/react-ds-global-form";
+
+<Field
+  name="country"
+  inputType="select"
+  middleware={[
+    addRESTOptions("/api/countries", {
+      method: "GET",
+      headers: { "Accept": "application/json" },
+      transformData: (data) => data.countries,
+    }),
+  ]}
+/>
+```
+
+**`addRESTValidation`** — validates field values against an API endpoint:
+
+```typescript
+import { addRESTValidation } from "@canonical/react-ds-global-form";
+
+<Field
+  name="username"
+  inputType="text"
+  middleware={[
+    addRESTValidation("/api/check-username", {
+      debounceWait: 300,
+      minLength: 3,
+      errorExtractor: async (response) => {
+        const data = await response.json();
+        return data.message;
+      },
+    }),
+  ]}
+/>
+```
+
+### Creating custom middleware
+
+A middleware factory returns the actual middleware function:
+
+```typescript
+function myMiddleware(options: MyOptions): Middleware<any> {
+  return (WrappedComponent) => {
+    return function EnhancedComponent(props) {
+      // Add your logic here
+      return <WrappedComponent {...props} />;
+    };
+  };
+}
+```
+
+Here is a complete example that fetches related data when a watched field value changes:
+
+```typescript
+import { createElement, useState, useEffect } from "react";
+import { useFormContext } from "react-hook-form";
+import type { Middleware } from "@canonical/react-ds-global-form";
+
+interface FetchRelatedOptions {
+  endpoint: string;
+  watchField: string;
+  targetProp?: string;
+  transformData?: (data: any) => any;
+}
+
+function addFetchRelated(options: FetchRelatedOptions): Middleware<any> {
+  const {
+    endpoint,
+    watchField,
+    targetProp = "relatedData",
+    transformData = (data) => data,
+  } = options;
+
+  return (WrappedComponent) => {
+    return function FetchRelatedComponent(props) {
+      const [data, setData] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState<string | null>(null);
+
+      const { watch } = useFormContext();
+      const watchValue = watch(watchField);
+
+      useEffect(() => {
+        if (!watchValue) { setData(null); return; }
+
+        const controller = new AbortController();
+        setLoading(true);
+        setError(null);
+
+        fetch(`${endpoint}?${watchField}=${encodeURIComponent(watchValue)}`, {
+          signal: controller.signal,
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error("Failed to fetch");
+            return res.json();
+          })
+          .then((json) => { setData(transformData(json)); setLoading(false); })
+          .catch((err) => {
+            if (err.name !== "AbortError") {
+              setError(err.message);
+              setLoading(false);
+            }
+          });
+
+        return () => controller.abort();
+      }, [watchValue]);
+
+      if (loading) return createElement("div", { className: "field-loading" }, "Loading...");
+      if (error) return createElement("div", { className: "field-error" }, error);
+
+      return createElement(WrappedComponent, { ...props, [targetProp]: data });
+    };
+  };
+}
+
+export default addFetchRelated;
+```
+
+Usage:
+
+```tsx
+<Field
+  name="city"
+  inputType="select"
+  label="City"
+  middleware={[
+    addFetchRelated({
+      endpoint: "/api/cities",
+      watchField: "country",
+      targetProp: "options",
+      transformData: (data) =>
+        data.cities.map((c) => ({ value: c.id, label: c.name })),
+    }),
+  ]}
+/>
+```
+
+### Middleware composition
+
+Multiple middleware compose in array order. The first item in the array becomes the outermost wrapper:
+
+```tsx
+<Field
+  name="product"
+  inputType="combobox"
+  middleware={[
+    withAnalytics("product-search"),  // Outermost
+    addRESTOptions("/api/products"),   // Middle
+    withDebounce(300),                 // Innermost
+  ]}
+/>
+```
+
+Execution flows from `withAnalytics` inward to `withDebounce`, then to the original field component.
+
+### Accessing form context in middleware
+
+Use `useFormContext` from react-hook-form to interact with form state:
+
+| Hook | Purpose |
+|------|---------|
+| `watch(name)` | Subscribe to field value changes |
+| `setValue(name, value)` | Programmatically set a field value |
+| `setError(name, error)` | Set a validation error |
+| `clearErrors(name)` | Clear validation errors |
+| `getValues()` | Get all current form values |
+
+<Tip>
+  For middleware that makes API calls on value changes, always debounce using `debounce` from `@canonical/utils` to avoid excessive requests.
+</Tip>
+
+### Type-safe middleware
+
+Specify the component props type to get full TypeScript coverage in your middleware:
+
+```typescript
+import type { Middleware, SelectProps } from "@canonical/react-ds-global-form";
+
+function withSelectEnhancement(): Middleware<SelectProps> {
+  return (WrappedComponent) => {
+    return function EnhancedSelect(props: SelectProps) {
+      const sortedOptions = [...props.options].sort((a, b) =>
+        a.label.localeCompare(b.label)
+      );
+      return <WrappedComponent {...props} options={sortedOptions} />;
+    };
+  };
+}
+```
+
+Use `Middleware<any>` when the middleware is field-type agnostic.

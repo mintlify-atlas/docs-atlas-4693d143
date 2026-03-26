@@ -1,0 +1,169 @@
+---
+title: "Modes & theming"
+description: "Colour modes, density variants, intent classes, and motion preferences in the Pragma styles-modes-* packages."
+sidebarTitle: "Modes"
+keywords: ["modes", "theming", "density", "dark mode", "colour mode", "intents", "motion"]
+---
+
+Modes are CSS class-based theming layers. Applying a mode class to any element in the DOM causes all `ds` components inside it to adopt the tokens defined by that mode. Because modes set CSS custom properties, they compose cleanly — you can apply a density mode to a sidebar and a colour mode to a modal without either affecting the other.
+
+All modes are included when you import `@canonical/styles`. The packages are also available individually if you need fine-grained control.
+
+## Colour mode — `styles-modes-canonical`
+
+`@canonical/styles-modes-canonical` applies Canonical's colour theme. The `.canonical` class sets the baseline colour tokens that all components inherit.
+
+```tsx
+// Apply the Canonical colour theme to your entire app
+<div className="canonical">
+  <App />
+</div>
+```
+
+You can also scope the theme to a subsection of the page:
+
+```tsx
+<section className="canonical">
+  <Button>Themed button</Button>
+</section>
+```
+
+<Tip>
+  Apply `.canonical` as high in the tree as possible — typically on `<body>` or the root layout wrapper — so every component inherits the theme tokens without additional class application.
+</Tip>
+
+## Density variants — `styles-modes-density`
+
+`@canonical/styles-modes-density` provides two density classes that adjust the spacing scale across all components:
+
+| Class | Effect |
+|---|---|
+| `.low-density` | Comfortable spacing — more padding and whitespace between elements |
+| `.high-density` | Compact spacing — reduced padding, suitable for data-dense UIs |
+
+```tsx
+// Comfortable layout for marketing pages
+<div className="canonical low-density">
+  <Navigation />
+  <main>...</main>
+</div>
+
+// Compact layout for a data table panel
+<section className="high-density">
+  <DataTable rows={rows} />
+</section>
+```
+
+Density classes can be applied to any container, not just the root. This allows different sections of the same page to use different densities.
+
+## Intent classes — `styles-modes-intents`
+
+`@canonical/styles-modes-intents` provides intent modifier classes that signal the purpose or outcome of a UI region. Applying an intent class sets the `--modifier-color-*` family of tokens on the container, which all child components read through their CSS fallback chains.
+
+| Class | Semantic meaning |
+|---|---|
+| `.positive` | Constructive, success, or confirmation |
+| `.negative` | Destructive, error, or danger |
+| `.caution` | Warning or potentially risky |
+| `.information` | Neutral informational context |
+| `.neutral` | Explicitly un-styled, default appearance |
+
+### Applying intent to a component
+
+Intent classes are most commonly applied directly on a component via its `appearance` prop, which maps to a class name:
+
+```tsx
+import { Button } from "@canonical/react-ds-global";
+
+<Button appearance="positive">Save changes</Button>
+<Button appearance="negative">Delete account</Button>
+<Button appearance="caution">Overwrite file</Button>
+```
+
+### Applying intent to a container
+
+Applying an intent class to a parent element affects all `ds` components inside it:
+
+```tsx
+<div className="negative">
+  <p>This action cannot be undone.</p>
+  <Button>Delete</Button>  {/* reads --modifier-color from the .negative ancestor */}
+</div>
+```
+
+```css
+/* What the browser resolves */
+.negative {
+  --modifier-color: rgba(199, 22, 43, 1);  /* red */
+  --modifier-color-text: #fff;
+  --modifier-color-border: var(--modifier-color);
+}
+```
+
+<Warning>
+  Avoid applying intent classes to very large containers such as `<body>` or the root layout. Intent classes override `--modifier-color` for every component in scope, which can produce unexpected results for neutral UI chrome.
+</Warning>
+
+## Motion preferences — `styles-modes-motion`
+
+`@canonical/styles-modes-motion` provides two classes that control animation behaviour:
+
+| Class | Effect |
+|---|---|
+| `.reduced-motion` | Suppresses or minimises animations |
+| `.normal-motion` | Restores full animation behaviour |
+
+These classes complement the browser's `prefers-reduced-motion` media query but allow programmatic override when the user has adjusted their preference in the application itself.
+
+```tsx
+<div className={userPrefersReducedMotion ? "reduced-motion" : "normal-motion"}>
+  <AnimatedPanel />
+</div>
+```
+
+## Composing multiple modes
+
+Mode classes are additive and can be combined freely on the same element or on different ancestors:
+
+```tsx
+<body className="canonical low-density">
+  {/* Entire app: Canonical colours + comfortable spacing */}
+
+  <aside className="high-density">
+    {/* This subtree overrides density to compact */}
+    <Sidebar />
+  </aside>
+
+  <dialog className="negative">
+    {/* Only this dialog has the negative intent token set */}
+    <Button importance="primary">Confirm deletion</Button>
+  </dialog>
+</body>
+```
+
+Because all modes operate through CSS custom properties, the cascade ensures the nearest ancestor's value wins. There is no runtime merging or conflict resolution — standard CSS specificity applies.
+
+## Development aid — `styles-debug`
+
+<Note>
+  `@canonical/styles-debug` is for development only. Do not import it in production bundles.
+</Note>
+
+`@canonical/styles-debug` provides a baseline grid overlay that helps verify typography alignment during development. Import it in your development entry point to overlay the grid on any page:
+
+```typescript
+// main.dev.ts
+import "@canonical/styles";
+import "@canonical/styles-debug"; // baseline grid overlay
+```
+
+The overlay makes it easy to verify that text, icons, and spacing increments sit on the baseline grid defined by `@canonical/styles-typography`.
+
+<CardGroup cols={2}>
+  <Card title="Design tokens" icon="swatch" href="/styles/tokens">
+    How tokens are named, how the fallback chain resolves values, and how to override tokens at any scope.
+  </Card>
+  <Card title="Styles overview" icon="paintbrush" href="/styles/overview">
+    The full package architecture and how to import styles in an app.
+  </Card>
+</CardGroup>

@@ -1,97 +1,88 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Pragma — Canonical's Design System"
+description: "React and Svelte components, CSS styles, design tokens, and developer tooling for building consistent UIs across Canonical's web properties."
 ---
 
-## Setting up
+Pragma is Canonical's implementation of the [Design System](https://github.com/canonical/design-system). It provides production-ready components, pure CSS styles, and developer tooling for building consistent user interfaces with React 19 and Svelte 5.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Install Pragma packages and render your first component in minutes
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Global Components" icon="cubes" href="/components/global">
+    Buttons, Cards, Badges, Tooltips, and more — production-ready UI primitives
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Form Components" icon="input-text" href="/components/forms">
+    react-hook-form integration with built-in validation and custom field support
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Styles & Theming" icon="palette" href="/styles/overview">
+    Pure CSS design tokens, colour modes, density variants, and motion preferences
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What's in Pragma
 
-Everything you need to create world-class documentation.
+Pragma is a monorepo of focused packages, each addressing a specific layer of the UI stack.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={2}>
+  <Card title="Component Tiers" icon="layer-group" href="/components/global">
+    Components are organised into Global, App, and Domain-specific tiers based on how broadly they apply across Canonical's applications
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="Design Tokens" icon="circle-half-stroke" href="/styles/tokens">
+    CSS custom properties derived from the Design System Ontology — theme your application without touching component internals
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="Type Safety" icon="shield-check" href="/reference/ds-types">
+    `ModifierFamily<T>` gives you compile-time safety over design system modifier variants like severity, density, and intent
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
+  <Card title="Developer Tooling" icon="wrench" href="/tooling/webarchitect">
+    Architecture validation, component generators, and Storybook addons to keep every package consistent
   </Card>
-</Columns>
+</CardGroup>
 
-## Need inspiration?
+## Get started
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Steps>
+  <Step title="Install a component package">
+    Add the global component library and its peer dependencies to your project.
+
+    ```bash
+    bun add @canonical/react-ds-global @canonical/styles react react-dom
+    ```
+  </Step>
+  <Step title="Import styles">
+    Import the aggregated stylesheet once at your application entry point.
+
+    ```typescript
+    import "@canonical/styles";
+    ```
+  </Step>
+  <Step title="Use a component">
+    Import and render components using standard named exports.
+
+    ```tsx
+    import { Button } from "@canonical/react-ds-global";
+
+    export default function App() {
+      return <Button importance="primary" anticipation="constructive">Get started</Button>;
+    }
+    ```
+  </Step>
+  <Step title="Explore the full library">
+    Browse all available components in the [Global Components](/components/global) reference, or jump straight to [Forms](/components/forms) for form-specific controls.
+  </Step>
+</Steps>
+
+## Package overview
+
+| Package | Description |
+|---------|-------------|
+| [`@canonical/react-ds-global`](/reference/react-ds-global) | Universal UI primitives: Button, Card, Badge, Tooltip, and more |
+| [`@canonical/react-ds-global-form`](/reference/react-ds-global-form) | Form controls with react-hook-form integration |
+| [`@canonical/react-ds-app`](/reference/react-ds-app) | Application-level UI: Navigation, Toolbar |
+| [`@canonical/styles`](/reference/styles) | Aggregated CSS stylesheet — import once |
+| [`@canonical/ds-types`](/reference/ds-types) | TypeScript modifier family types |
+| [`@canonical/utils`](/reference/utils) | Shared utility functions |
+
+<Note>
+  All Pragma packages share a single version number. If you use `@canonical/react-ds-global@0.18.0`, every other Pragma package at `0.18.0` is compatible — no compatibility matrix required.
+</Note>

@@ -1,0 +1,233 @@
+---
+title: "Global Components"
+description: "Universal UI primitives from @canonical/react-ds-global — grouped by maturity and ready to drop into any Canonical application."
+keywords: ["button", "card", "badge", "tooltip", "accordion", "icon", "components", "react"]
+---
+
+`@canonical/react-ds-global` is the foundation of Pragma's React component library. It provides universal UI primitives — elements like buttons, cards, and icons — that apply across all Canonical applications regardless of context.
+
+Components are grouped into three maturity tiers: **Stable** (production-ready, no breaking changes), **Beta** (API may change in minor releases), and **Experimental** (early-stage, expect breaking changes).
+
+## Installation
+
+```bash
+bun add @canonical/react-ds-global @canonical/styles
+```
+
+Import the aggregated stylesheet once at your application entry point:
+
+```typescript
+import "@canonical/styles";
+```
+
+## Components by maturity
+
+<Tabs>
+  <Tab title="Stable">
+    These components have a locked public API. You can use them in production without concern about breaking changes between minor releases.
+
+    | Component | Description |
+    |-----------|-------------|
+    | `Accordion` | Collapsible content panels for progressive disclosure |
+    | `Breadcrumbs` | Navigation trail showing the current page hierarchy |
+    | `Card` | Rigid, repeatable container for comparing data objects in a collection |
+    | `Icon` | SVG icon renderer backed by `@canonical/ds-assets` |
+    | `Timeline` | Ordered sequence of events or steps |
+
+    ```tsx
+    import { Accordion, Breadcrumbs, Card, Icon, Timeline } from "@canonical/react-ds-global";
+    ```
+  </Tab>
+  <Tab title="Beta">
+    These components are functionally complete but their prop API may change in a future minor release. Pin to a specific version if API stability is critical.
+
+    | Component | Description |
+    |-----------|-------------|
+    | `Button` | Triggers actions; supports importance, anticipation, variant, and icon props |
+    | `Label` | Form label with optional required/optional indicator |
+    | `Tile` | Flexible container for feature highlights and navigation cards |
+
+    ```tsx
+    import { Button, Label, Tile } from "@canonical/react-ds-global";
+    ```
+  </Tab>
+  <Tab title="Experimental">
+    These components are early-stage. APIs will change. Use them in prototypes or internal tools, but avoid them in production until they graduate to Beta or Stable.
+
+    | Component | Description |
+    |-----------|-------------|
+    | `Badge` | Small status indicator or count label |
+    | `Chip` | Compact tag representing a value or filter |
+    | `Link` | Styled anchor with design system typography |
+    | `Rule` | Horizontal divider line |
+    | `Section` | Semantic page section wrapper |
+    | `SkipLink` | Accessibility skip-navigation link |
+    | `Tooltip` | Floating message element; consumed via `TooltipArea` or `withTooltip` |
+
+    ```tsx
+    import { Badge, Chip, Link, Rule, Section, SkipLink, Tooltip } from "@canonical/react-ds-global";
+    ```
+  </Tab>
+</Tabs>
+
+## Usage examples
+
+### Button
+
+`Button` extends `ButtonHTMLAttributes<HTMLButtonElement>`, so all native button attributes pass through. Use `importance` to set visual hierarchy, `anticipation` to communicate the expected outcome, and `variant` for link-styled variants.
+
+```tsx
+import { Button } from "@canonical/react-ds-global";
+
+// Primary call-to-action
+<Button importance="primary">Save changes</Button>
+
+// Destructive action with secondary importance
+<Button importance="secondary" anticipation="destructive">
+  Delete account
+</Button>
+
+// Link variant
+<Button variant="link">Learn more</Button>
+
+// With an icon (defaults to start position)
+import { Icon } from "@canonical/react-ds-global";
+
+<Button
+  importance="primary"
+  anticipation="constructive"
+  icon={<Icon icon="plus" />}
+>
+  Add item
+</Button>
+
+// Icon at the end
+<Button
+  importance="secondary"
+  icon={<Icon icon="arrow-right" />}
+  iconPosition="end"
+>
+  Continue
+</Button>
+```
+
+**`importance` values:** `primary` | `secondary` | `tertiary`
+
+**`anticipation` values:** `constructive` | `caution` | `destructive`
+
+<Tip>
+  If `children` is a plain string, `Button` derives `aria-label` from it automatically. When children contain JSX elements, pass an explicit `aria-label` to ensure accessibility.
+</Tip>
+
+### Card
+
+`Card` is a structured container for representing data objects in a collection. Unlike `Tile`, it enforces a consistent internal layout so users can scan and compare attributes across multiple cards.
+
+The component exposes four subcomponents as static properties:
+
+```tsx
+import { Card } from "@canonical/react-ds-global";
+
+<Card emphasis="neutral">
+  <Card.Header>
+    <h3>Ubuntu 24.04 LTS</h3>
+  </Card.Header>
+  <Card.Image src="/images/ubuntu.png" alt="Ubuntu logo" />
+  <Card.Content>
+    <p>Long-term support release with five years of security updates.</p>
+  </Card.Content>
+</Card>
+
+// Highlighted variant draws more visual attention
+<Card emphasis="highlighted">
+  <Card.Thumbnail src="/images/thumb.png" alt="" />
+  <Card.Content>
+    <p>Featured content</p>
+  </Card.Content>
+</Card>
+```
+
+**`emphasis` values:** `neutral` (default) | `highlighted`
+
+**Subcomponents:** `Card.Header` | `Card.Content` | `Card.Image` | `Card.Thumbnail`
+
+### Icon
+
+`Icon` renders SVG icons from `@canonical/ds-assets` using a `<use>` reference. Icons use a 16×16 viewBox and inherit `currentColor` for fill, so they adapt to the surrounding text colour.
+
+```tsx
+import { Icon } from "@canonical/react-ds-global";
+
+// Basic usage — icon name matches filename in ds-assets
+<Icon icon="plus" />
+
+// Custom root path (required if your server serves icons from a different path)
+<Icon icon="close" rootPath="/static/icons" />
+
+// With explicit aria-label override
+<Icon icon="warning" aria-label="Warning" />
+```
+
+The `icon` prop accepts any `IconName` from `@canonical/ds-assets`. Icons are served as static files; make sure your build pipeline copies the `dist/icons/` directory from `@canonical/ds-assets` to your public assets folder.
+
+### Tooltip
+
+`Tooltip` renders the visible tooltip message. It has no positioning or interactivity of its own — use `TooltipArea` or the `withTooltip` HOC for full tooltip behaviour.
+
+```tsx
+import { Tooltip } from "@canonical/react-ds-global";
+
+// Tooltip renders as hidden by default
+<Tooltip id="my-tooltip" isOpen={showTooltip}>
+  This is helpful context.
+</Tooltip>
+```
+
+<Note>
+  `Tooltip` is Experimental. For production use, prefer the `withTooltip` HOC or `TooltipArea` wrapper, which handle positioning and keyboard accessibility.
+</Note>
+
+## The modifier pattern
+
+Pragma components apply modifier classes by spreading string values directly into `className`. The class construction follows a predictable pattern:
+
+```tsx
+// Inside Button.tsx:
+className={[
+  "ds",           // namespace
+  "button",       // component name
+  importance,     // modifier: "primary" | "secondary" | "tertiary" | undefined
+  anticipation,   // modifier: "constructive" | "caution" | "destructive" | undefined
+  variant,        // modifier: "link" | undefined
+  className,      // consumer-provided classes
+].filter(Boolean).join(" ")}
+```
+
+This means modifier values map directly to CSS class names. A `Button` with `importance="primary"` renders `class="ds button primary"`. You can inspect and override any modifier via standard CSS class selectors.
+
+Modifier families are typed via `ModifierFamily<T>` from `@canonical/ds-types`, which resolves to a union of string literals. This gives you compile-time safety without runtime overhead.
+
+```typescript
+import type { ModifierFamily } from "@canonical/ds-types";
+
+// ModifierFamily<"importance"> === "primary" | "secondary" | "tertiary"
+// ModifierFamily<"anticipation"> === "constructive" | "caution" | "destructive"
+// ModifierFamily<"severity"> === "neutral" | "positive" | "negative" | "caution" | "information"
+```
+
+## Further reading
+
+<CardGroup cols={2}>
+  <Card title="Form Components" icon="input-text" href="/components/forms">
+    Field and Form components with react-hook-form integration
+  </Card>
+  <Card title="App Components" icon="layout" href="/components/app">
+    Application-level UI for internal tools
+  </Card>
+  <Card title="Design Tokens" icon="circle-half-stroke" href="/styles/tokens">
+    CSS custom properties and modifier families
+  </Card>
+  <Card title="Package Reference" icon="book" href="/reference/react-ds-global">
+    Full API reference for @canonical/react-ds-global
+  </Card>
+</CardGroup>

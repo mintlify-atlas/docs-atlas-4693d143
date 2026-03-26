@@ -1,0 +1,163 @@
+---
+title: "@canonical/ds-types"
+description: "TypeScript types for modifier families and navigation data structures used across the Pragma design system."
+sidebarTitle: "ds-types"
+---
+
+`@canonical/ds-types` provides the TypeScript type infrastructure that all Pragma component packages share. Its most important export is `ModifierFamily<T>` — a utility type that resolves a modifier family name to the union of its allowed string values, giving you compile-time safety when applying design-system modifiers to components.
+
+## Installation
+
+```bash
+bun add @canonical/ds-types
+```
+
+## ModifierFamily\<T\>
+
+```typescript
+import type { ModifierFamily } from "@canonical/ds-types";
+
+// Resolves to: 'neutral' | 'positive' | 'negative' | 'caution' | 'information'
+type SeverityValue = ModifierFamily<"severity">;
+
+// Resolves to: 'primary' | 'secondary' | 'tertiary'
+type ImportanceValue = ModifierFamily<"importance">;
+```
+
+The type is defined as:
+
+```typescript
+type ModifierFamily<T extends keyof typeof MODIFIER_FAMILIES> =
+  (typeof MODIFIER_FAMILIES)[T][number];
+```
+
+This means `ModifierFamily<T>` is always derived from the authoritative `MODIFIER_FAMILIES` constant — there is no way for a component to accept a modifier value that the design system does not define.
+
+## Available modifier families
+
+<ParamField path="anticipation" type="'constructive' | 'caution' | 'destructive'">
+  Expected outcome of an action. Used by Button to signal intent before the user commits.
+</ParamField>
+
+<ParamField path="criticality" type="'success' | 'error' | 'warning' | 'information'">
+  Result or status of a completed operation.
+</ParamField>
+
+<ParamField path="density" type="'dense' | 'comfortable'">
+  Layout density. `dense` reduces padding and spacing for data-heavy interfaces.
+</ParamField>
+
+<ParamField path="emphasis" type="'primary' | 'secondary' | 'tertiary'">
+  Visual prominence. Generic alternative to `importance` for non-button contexts.
+</ParamField>
+
+<ParamField path="importance" type="'primary' | 'secondary' | 'tertiary'">
+  Visual hierarchy for interactive controls such as Button.
+</ParamField>
+
+<ParamField path="lifecycle" type="'planned' | 'in_progress' | 'completed' | 'failed'">
+  Stage in a workflow or process lifecycle.
+</ParamField>
+
+<ParamField path="release" type="'alpha' | 'beta' | 'experimental' | 'stable'">
+  Maturity of a component or feature.
+</ParamField>
+
+<ParamField path="severity" type="'neutral' | 'positive' | 'negative' | 'caution' | 'information'">
+  Semantic significance of a status indicator. Used by Badge and similar components.
+</ParamField>
+
+## Using ModifierFamily in a component
+
+```typescript
+import type { ModifierFamily } from "@canonical/ds-types";
+
+interface StatusPillProps {
+  severity: ModifierFamily<"severity">;
+  children: React.ReactNode;
+}
+
+const StatusPill = ({ severity, children }: StatusPillProps) => (
+  <span className={`ds pill ${severity}`}>{children}</span>
+);
+
+// TypeScript rejects invalid values at compile time:
+<StatusPill severity="critical">Error</StatusPill>  // Error: 'critical' is not assignable
+<StatusPill severity="negative">Error</StatusPill>  // OK
+```
+
+## MODIFIER_FAMILIES constant
+
+You can import the constant directly to iterate over families or their values at runtime:
+
+```typescript
+import { MODIFIER_FAMILIES } from "@canonical/ds-types";
+
+// ['neutral', 'positive', 'negative', 'caution', 'information']
+const severityValues = MODIFIER_FAMILIES.severity;
+
+// Useful for building storybook argTypes:
+const severityControl = {
+  control: "select",
+  options: [...MODIFIER_FAMILIES.severity],
+};
+```
+
+## Navigation types
+
+`@canonical/ds-types` also exports a framework-agnostic `Item<C>` type for building navigation data structures. It is used by Breadcrumbs, site navigation, file trees, and mega menus.
+
+```typescript
+import type { Item } from "@canonical/ds-types";
+
+const breadcrumbs: Item[] = [
+  { label: "Home", url: "/" },
+  { label: "Settings", url: "/settings" },
+  { label: "Profile" },  // no url — current page
+];
+```
+
+### Item\<C\> fields
+
+<ParamField path="key" type="string">
+  Unique identifier for non-navigable items (section headers, groupings) that have no URL.
+</ParamField>
+
+<ParamField path="url" type="string">
+  Navigation URL. When provided, the item renders as a link.
+</ParamField>
+
+<ParamField path="label" type="string">
+  Display text in the navigation UI.
+</ParamField>
+
+<ParamField path="disabled" type="boolean">
+  Prevents interaction with the item.
+</ParamField>
+
+<ParamField path="className" type="string">
+  CSS class for custom styling of the item.
+</ParamField>
+
+<ParamField path="items" type="Item<C>[]">
+  Child items for nested navigation structures.
+</ParamField>
+
+<ParamField path="displayItemsType" type="'default' | 'custom'">
+  How child items are rendered.
+</ParamField>
+
+<ParamField path="Component" type="C">
+  Custom component for rendering the item. The generic `C` is bound to a concrete framework type (e.g. `React.ComponentType`) by the consuming package.
+</ParamField>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="react-ds-global" icon="cubes" href="/reference/react-ds-global">
+    Components that use ModifierFamily for Badge severity, Button importance, and more
+  </Card>
+  <Card title="Styles & Theming" icon="palette" href="/styles/overview">
+    CSS custom properties that implement modifier family variants
+  </Card>
+</CardGroup>

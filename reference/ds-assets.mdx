@@ -1,0 +1,129 @@
+---
+title: "@canonical/ds-assets"
+description: "Icon catalogue and shared visual assets for the Pragma design system."
+sidebarTitle: "ds-assets"
+---
+
+`@canonical/ds-assets` contains icons and shared visual assets used across Pragma component packages. All icons use a consistent 16×16 viewBox with `currentColor` fill, so they inherit text colour from their context without any extra configuration.
+
+## Installation
+
+```bash
+bun add @canonical/ds-assets
+```
+
+## Serving icons
+
+Icons are shipped as individual SVG files in the `icons/` directory of the package. You must expose this directory at a public URL so the `Icon` component can load them at runtime.
+
+```
+node_modules/@canonical/ds-assets/icons/
+  checkmark.svg
+  settings.svg
+  close.svg
+  ... (150+ icons)
+```
+
+With Vite, copy them to your public folder:
+
+```typescript
+// vite.config.ts
+import { viteStaticCopy } from "vite-plugin-static-copy";
+
+export default {
+  plugins: [
+    viteStaticCopy({
+      targets: [{
+        src: "node_modules/@canonical/ds-assets/icons",
+        dest: ".",
+      }],
+    }),
+  ],
+};
+```
+
+Then icons are available at `/icons/<name>.svg`.
+
+## Using icons with the Icon component
+
+Use the `Icon` component from `@canonical/react-ds-global` to render icons. Pass the icon name as a string — TypeScript checks the name against the `IconName` union at compile time.
+
+```tsx
+import { Icon } from "@canonical/react-ds-global";
+
+<Icon icon="settings" />
+<Icon icon="checkmark" />
+<Icon icon="arrow-right" />
+```
+
+If your icons are not at the default `/icons` path, set `rootPath`:
+
+```tsx
+<Icon icon="settings" rootPath="/static/icons" />
+```
+
+## IconName type
+
+```typescript
+import type { IconName } from "@canonical/ds-assets";
+
+// Compile-time checked icon name:
+const myIcon: IconName = "settings";
+```
+
+## Icon catalogue
+
+The following icons are available (150+ total):
+
+<Tabs>
+  <Tab title="Navigation & UI">
+    `arrow-down`, `arrow-up`, `arrow-left`, `arrow-right`, `arrow-top-left`, `arrow-top-right`, `arrow-bottom-left`, `arrow-bottom-right`, `back-to-top`, `chevron-down`, `chevron-up`, `chevron-left`, `chevron-right`, `close`, `menu`, `menu-contextual`, `external-link`, `link`, `anchor`, `home`, `search`, `filter`, `settings`, `toggle-side-nav`, `fullscreen`, `cursor`
+  </Tab>
+  <Tab title="Status & feedback">
+    `checkmark`, `success`, `success-fill`, `error`, `error-fill`, `warning`, `warning-fill`, `information`, `in-progress`, `timed-out`, `waiting`, `spinner`, `snooze`, `pause`, `stop`, `play`, `play-fill`, `play-pending`
+  </Tab>
+  <Tab title="Actions">
+    `add-canvas`, `add-logical-volume`, `add-partition`, `copy`, `delete`, `download`, `drag`, `edit`, `export`, `import`, `upload`, `restart`, `change-version`, `mount`, `unmount`, `tidy`, `pin`, `share`, `log-out`
+  </Tab>
+  <Tab title="Objects & concepts">
+    `applications`, `archive`, `blueprint`, `book`, `bundle`, `canvas`, `certificate`, `certification`, `cluster-host`, `code`, `comments`, `connected`, `containers`, `controllers`, `debug`, `desktop`, `disconnected`, `email`, `exposed`, `file`, `file-blank`, `folder`, `fork`, `gift`, `image`, `iso`, `location`, `locked`, `machines`, `map`, `models`, `notifications`, `notifications-off`, `open-terminal`, `plans`, `pods`, `power-off`, `power-on`, `private-key`, `profiles`, `queued`, `repository`, `revisions`, `rss`, `security`, `security-error`, `security-tick`, `security-warning`, `select`, `select-add`, `select-remove`, `single-host`, `snapshot`, `starred`, `starred-off`, `statistics`, `status`, `switcher`, `switcher-dashboard`, `switcher-environments`, `tag`, `thumbs-down`, `thumbs-up`, `units`, `unlocked`, `usb`, `user`, `user-profile`, `user-group`, `website`
+  </Tab>
+  <Tab title="Priority">
+    `priority-critical`, `priority-high`, `priority-medium`, `priority-low`, `priority-negligible`, `priority-unknown`
+  </Tab>
+  <Tab title="Social">
+    `facebook`, `github`, `instagram`, `linkedin`, `x`, `youtube`
+  </Tab>
+  <Tab title="Highlights">
+    `help`, `hide`, `show`, `highlight-off`, `highlight-on`, `bug`, `bug` (alias)
+  </Tab>
+</Tabs>
+
+## Styling icons
+
+Icons use `currentColor` for their fill. Set the icon colour via CSS `color` on the icon or a parent element:
+
+```css
+.my-icon {
+  color: var(--color-positive);
+  width: 1rem;
+  height: 1rem;
+}
+```
+
+```tsx
+<span className="my-icon">
+  <Icon icon="success" />
+</span>
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="react-ds-global" icon="cubes" href="/reference/react-ds-global">
+    Icon component that consumes this package
+  </Card>
+  <Card title="Styles & Theming" icon="palette" href="/styles/tokens">
+    CSS custom properties for colour tokens referenced by icons
+  </Card>
+</CardGroup>

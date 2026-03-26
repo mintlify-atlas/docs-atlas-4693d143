@@ -1,0 +1,311 @@
+---
+title: "@canonical/react-ds-global-form"
+description: "Form components with react-hook-form integration — Field, Form, withWrapper, and middleware."
+sidebarTitle: "react-ds-global-form"
+---
+
+`@canonical/react-ds-global-form` provides form controls built on top of [react-hook-form](https://react-hook-form.com/). It includes a polymorphic `Field` component that renders different input types based on an `inputType` discriminant, a `Form` wrapper that manages form state, and the `withWrapper` higher-order component for composing fields with labels, descriptions, and validation messages.
+
+## Installation
+
+```bash
+bun add @canonical/react-ds-global-form @canonical/react-ds-global @canonical/styles react react-dom
+```
+
+## Exports
+
+| Export | Kind | Description |
+|--------|------|-------------|
+| `Form` | Component | Manages form state and submission |
+| `Field` | Component | Polymorphic input dispatcher |
+| `withWrapper` | HOC | Wraps an input with label, description, and error slots |
+| `addRESTOptions` | Middleware | Fetches select options from a REST endpoint |
+| `addRESTValidation` | Middleware | Adds server-side validation via REST |
+| `InputProps` | Type | Base props shared by all input types |
+
+## Form
+
+`Form` wraps its children in a react-hook-form `FormProvider`. You can either let `Form` call `useForm` internally, or pass your own `methods` object when you need external access to the form state.
+
+```tsx
+import { Form, Field } from "@canonical/react-ds-global-form";
+
+<Form
+  onSubmit={(data) => console.log(data)}
+  defaultValues={{ email: "" }}
+  mode="onBlur"
+>
+  <Field inputType="text" name="email" label="Email address" />
+  <button type="submit">Submit</button>
+</Form>
+```
+
+### Controlled form state
+
+```tsx
+import { useForm } from "react-hook-form";
+import { Form, Field } from "@canonical/react-ds-global-form";
+
+function MyForm() {
+  const methods = useForm({ defaultValues: { name: "" } });
+
+  return (
+    <Form methods={methods} onSubmit={methods.handleSubmit(console.log)}>
+      <Field inputType="text" name="name" label="Name" />
+      <button type="submit">Submit</button>
+    </Form>
+  );
+}
+```
+
+### Form props
+
+<ParamField path="onSubmit" type="(data: Record<string, unknown>) => void | Promise<void>" required>
+  Called with validated form data on successful submission.
+</ParamField>
+
+<ParamField path="methods" type="UseFormReturn">
+  Externally managed `useForm` return value. When provided, `Form` acts as a `FormProvider` wrapper without calling `useForm` internally.
+</ParamField>
+
+<ParamField path="defaultValues" type="UseFormProps['defaultValues']">
+  Default field values. Ignored when `methods` is provided.
+</ParamField>
+
+<ParamField path="mode" type="'onSubmit' | 'onBlur' | 'onChange' | 'onTouched' | 'all'">
+  Validation trigger strategy. Ignored when `methods` is provided.
+</ParamField>
+
+<ParamField path="id" type="string">
+  HTML `id` for the form element.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes.
+</ParamField>
+
+## Field
+
+`Field` is a discriminated union component. The `inputType` prop selects which input renders; the remaining props are typed to match that input.
+
+```tsx
+import { Field } from "@canonical/react-ds-global-form";
+
+// Text input
+<Field inputType="text" name="username" label="Username" />
+
+// Select
+<Field
+  inputType="select"
+  name="country"
+  label="Country"
+  options={[
+    { value: "gb", label: "United Kingdom" },
+    { value: "us", label: "United States" },
+  ]}
+/>
+
+// Checkbox
+<Field inputType="checkbox" name="agree" label="I agree to the terms" />
+
+// Custom component
+<Field
+  inputType="custom"
+  name="avatar"
+  CustomComponent={MyAvatarInput}
+/>
+```
+
+### inputType values
+
+| Value | Renders |
+|-------|---------|
+| `text` \| `password` \| `email` \| `number` \| `tel` \| `url` | HTML text-type input |
+| `checkbox` | Checkbox input |
+| `range` | Range slider |
+| `select` | Dropdown select |
+| `simple-choices` | Radio group |
+| `textarea` | Multi-line text area |
+| `date` | Date picker |
+| `time` | Time picker |
+| `datetime` | Date and time picker |
+| `file` | File upload |
+| `color` | Colour picker |
+| `phone` | Phone number input with country code |
+| `choices` | Multi-select checkbox group |
+| `custom` | Arbitrary component via `CustomComponent` prop |
+
+### Shared Field props
+
+<ParamField path="inputType" type="string" required>
+  Discriminant that determines which input component renders.
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Field name registered with react-hook-form. Must match the key in `defaultValues`.
+</ParamField>
+
+<ParamField path="registerProps" type="RegisterOptions">
+  react-hook-form validation rules (e.g. `required`, `minLength`, `pattern`).
+</ParamField>
+
+<ParamField path="label" type="string">
+  Visible label rendered by the wrapper.
+</ParamField>
+
+<ParamField path="description" type="string">
+  Hint text rendered below the input.
+</ParamField>
+
+<ParamField path="isOptional" type="boolean">
+  Appends an "(optional)" indicator to the label.
+</ParamField>
+
+## withWrapper
+
+`withWrapper` is a higher-order component that wraps an input component with the standard field chrome: label, optional indicator, description, and validation error message.
+
+```tsx
+import { withWrapper } from "@canonical/react-ds-global-form";
+import type { InputProps } from "@canonical/react-ds-global-form";
+
+interface MyInputProps extends InputProps {
+  placeholder?: string;
+}
+
+const MyInput = ({ name, placeholder }: MyInputProps) => (
+  <input name={name} placeholder={placeholder} />
+);
+
+const MyField = withWrapper(MyInput);
+
+// Usage:
+<Form onSubmit={handleSubmit}>
+  <MyField
+    name="search"
+    label="Search"
+    description="Enter a keyword"
+    placeholder="e.g. ubuntu"
+  />
+</Form>
+```
+
+### withWrapper signature
+
+```typescript
+function withWrapper<
+  ComponentProps extends BaseInputProps,
+  ComponentWrapperProps extends BaseWrapperProps<ComponentProps> = WrapperProps<ComponentProps>,
+>(
+  Component: React.ComponentType<ComponentProps>,
+  options?: {
+    middleware?: Middleware<ComponentProps>[];
+    WrapperComponent?: React.ComponentType<ComponentWrapperProps>;
+    condition?: Condition;
+  }
+): React.ComponentType<WrappedComponentProps<ComponentProps, ComponentWrapperProps>>
+```
+
+### WrapperProps
+
+<ParamField path="label" type="string">
+  Visible label text.
+</ParamField>
+
+<ParamField path="description" type="string">
+  Hint text displayed below the input.
+</ParamField>
+
+<ParamField path="isOptional" type="boolean">
+  Shows an "(optional)" marker next to the label.
+</ParamField>
+
+<ParamField path="middleware" type="Middleware<ComponentProps>[]">
+  Array of middleware functions applied to the input before rendering.
+</ParamField>
+
+<ParamField path="condition" type="[string[], (values: unknown[]) => boolean]">
+  Tuple of watched field names and a predicate. The field renders only when the predicate returns `true`.
+</ParamField>
+
+## InputProps type
+
+`InputProps` is the base type that all custom inputs must satisfy.
+
+```typescript
+import type { InputProps } from "@canonical/react-ds-global-form";
+
+type MyCustomInputProps = InputProps<{
+  rows?: number;
+}>;
+```
+
+<ParamField path="name" type="string" required>
+  Field name for react-hook-form registration.
+</ParamField>
+
+<ParamField path="registerProps" type="RegisterOptions">
+  Validation rules forwarded to `register()`.
+</ParamField>
+
+<ParamField path="aria-labelledby" type="string">
+  References an external element that labels the input.
+</ParamField>
+
+<ParamField path="aria-describedby" type="string">
+  References an element that describes the input (e.g. hint text).
+</ParamField>
+
+<ParamField path="aria-errormessage" type="string">
+  References the element containing the validation error message.
+</ParamField>
+
+<ParamField path="aria-invalid" type="boolean">
+  Marks the input as invalid for screen readers.
+</ParamField>
+
+## Middleware
+
+Middleware functions transform an input component before it renders. They compose left-to-right: each function receives the component returned by the previous one.
+
+```tsx
+import {
+  Form,
+  Field,
+  addRESTOptions,
+  addRESTValidation,
+} from "@canonical/react-ds-global-form";
+
+<Field
+  inputType="select"
+  name="region"
+  label="Region"
+  middleware={[
+    addRESTOptions("/api/regions"),
+    addRESTValidation("/api/validate-region"),
+  ]}
+/>
+```
+
+| Middleware | Description |
+|------------|-------------|
+| `addRESTOptions` | Fetches `options` from a REST endpoint and injects them into the select |
+| `addRESTValidation` | Posts the field value to a REST endpoint and surfaces server-side errors |
+
+<Tip>
+  You can write your own middleware using the `Middleware<ComponentProps>` type. See the [custom fields guide](/guides/custom-fields) for a full walkthrough.
+</Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Form components guide" icon="input-text" href="/components/forms">
+    Conceptual overview and form composition patterns
+  </Card>
+  <Card title="Custom fields guide" icon="puzzle-piece" href="/guides/custom-fields">
+    How to build and register custom field types
+  </Card>
+  <Card title="react-ds-global" icon="cubes" href="/reference/react-ds-global">
+    Global UI primitives used inside form fields
+  </Card>
+</CardGroup>

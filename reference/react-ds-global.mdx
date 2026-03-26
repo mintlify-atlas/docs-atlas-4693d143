@@ -1,0 +1,253 @@
+---
+title: "@canonical/react-ds-global"
+description: "Universal UI primitives for React — Button, Card, Badge, Tooltip, and more. The foundation of every Pragma-based application."
+sidebarTitle: "react-ds-global"
+---
+
+`@canonical/react-ds-global` is the global-tier component library. It contains production-ready UI primitives that apply across all Canonical web properties regardless of application context. Components are organised by maturity: **Stable**, **Beta**, and **Experimental**.
+
+## Installation
+
+```bash
+bun add @canonical/react-ds-global @canonical/styles react react-dom
+```
+
+Import the aggregated stylesheet once at your application entry point:
+
+```typescript
+import "@canonical/styles";
+```
+
+## Component list
+
+<Tabs>
+  <Tab title="Stable">
+    These components have a settled API and are safe to use in production. Breaking changes go through a deprecation cycle.
+
+    | Component | Description |
+    |-----------|-------------|
+    | `Accordion` | Expandable content panels with WAI-ARIA keyboard navigation |
+    | `Breadcrumbs` | Hierarchical navigation trail |
+    | `Card` | Rigid container for data objects; supports subcomponents |
+    | `Icon` | SVG icon from the `@canonical/ds-assets` catalogue |
+    | `Timeline` | Ordered sequence of events or steps |
+  </Tab>
+  <Tab title="Beta">
+    API may still change between minor releases. Suitable for production with the expectation of occasional migration work.
+
+    | Component | Description |
+    |-----------|-------------|
+    | `Button` | Primary interactive control with importance and anticipation modifiers |
+    | `Label` | Text label with optional icon |
+    | `Tile` | Flexible container for freeform content (contrast with Card's rigid structure) |
+  </Tab>
+  <Tab title="Experimental">
+    Early-stage components under active design iteration. Expect breaking changes.
+
+    | Component | Description |
+    |-----------|-------------|
+    | `Badge` | Numeric count indicator with severity variants |
+    | `Chip` | Compact tag or filter token |
+    | `Link` | Anchor element with design-system styling |
+    | `Rule` | Horizontal divider |
+    | `Section` | Semantic section wrapper |
+    | `SkipLink` | Accessibility skip-to-content link |
+    | `Tooltip` | Floating contextual label |
+  </Tab>
+</Tabs>
+
+## Importing components
+
+All components are exported from the package root:
+
+```tsx
+import {
+  Button,
+  Card,
+  Badge,
+  Icon,
+  Tooltip,
+  Accordion,
+} from "@canonical/react-ds-global";
+```
+
+## Button
+
+```tsx
+import { Button } from "@canonical/react-ds-global";
+
+<Button importance="primary" anticipation="constructive">
+  Save changes
+</Button>
+
+<Button importance="secondary" anticipation="destructive">
+  Delete
+</Button>
+
+<Button variant="link">Cancel</Button>
+```
+
+<ParamField path="importance" type="'primary' | 'secondary' | 'tertiary'">
+  Visual hierarchy of the button. `primary` is the main call-to-action; `tertiary` has the lowest prominence.
+</ParamField>
+
+<ParamField path="anticipation" type="'constructive' | 'caution' | 'destructive'">
+  Expected outcome of the action. Use `destructive` for irreversible operations such as delete.
+</ParamField>
+
+<ParamField path="variant" type="'link'">
+  Renders the button as a styled text link rather than a button surface.
+</ParamField>
+
+<ParamField path="icon" type="ReactNode">
+  Icon element displayed alongside the label.
+</ParamField>
+
+<ParamField path="iconPosition" type="'start' | 'end'" default="'start'">
+  Position of the icon relative to the label.
+</ParamField>
+
+<ParamField path="children" type="ReactNode">
+  Button label text. Used as the accessible `aria-label` when no explicit one is provided.
+</ParamField>
+
+## Card
+
+Card is a rigid, repeatable container for data objects. Use it when displaying collections where users need to scan and compare attributes across items.
+
+```tsx
+import { Card } from "@canonical/react-ds-global";
+
+<Card emphasis="highlighted">
+  <Card.Header>Product name</Card.Header>
+  <Card.Content>
+    <p>Description of the product.</p>
+  </Card.Content>
+  <Card.Image src="/images/product.png" alt="Product thumbnail" />
+</Card>
+```
+
+### Card subcomponents
+
+| Subcomponent | Description |
+|---|---|
+| `Card.Header` | Heading area, typically the item name |
+| `Card.Content` | Main body content |
+| `Card.Image` | Full-width image |
+| `Card.Thumbnail` | Small decorative thumbnail |
+
+<ParamField path="emphasis" type="'neutral' | 'highlighted'" default="'neutral'">
+  `highlighted` increases the card's visual prominence — useful for featured or selected items.
+</ParamField>
+
+## Accordion
+
+```tsx
+import { Accordion } from "@canonical/react-ds-global";
+
+<Accordion>
+  <Accordion.Item title="First section">
+    Content for the first section.
+  </Accordion.Item>
+  <Accordion.Item title="Second section">
+    Content for the second section.
+  </Accordion.Item>
+</Accordion>
+```
+
+Keyboard navigation follows the WAI-ARIA Accordion Pattern. Arrow keys move focus between headers; Enter or Space toggles the panel.
+
+## Badge
+
+```tsx
+import { Badge } from "@canonical/react-ds-global";
+
+<Badge value={42} severity="positive" />
+<Badge value={9999} humanizeOptions={{ overflowIndicator: "+" }} />
+```
+
+<ParamField path="value" type="number" required>
+  The numeric count to display.
+</ParamField>
+
+<ParamField path="severity" type="'neutral' | 'positive' | 'negative' | 'caution' | 'information'">
+  Visual appearance reflecting status.
+</ParamField>
+
+<ParamField path="humanizeOptions" type="HumanizeNumberOptions">
+  Options for compacting large numbers (e.g. 9999 → "9k+"). See [`@canonical/utils`](/reference/utils).
+</ParamField>
+
+<ParamField path="pluralizeOptions" type="PluralizeOptions">
+  Singular/plural form of the item being counted, used in the accessible title.
+</ParamField>
+
+## Icon
+
+```tsx
+import { Icon } from "@canonical/react-ds-global";
+
+<Icon icon="settings" />
+<Icon icon="checkmark" rootPath="/custom/icons" />
+```
+
+<ParamField path="icon" type="IconName" required>
+  Name of the icon from the `@canonical/ds-assets` catalogue. See [`@canonical/ds-assets`](/reference/ds-assets) for the full list.
+</ParamField>
+
+<ParamField path="rootPath" type="string" default="'/icons'">
+  Root path where icon SVG files are served. The path must be publicly accessible.
+</ParamField>
+
+## Tooltip
+
+```tsx
+import { Tooltip } from "@canonical/react-ds-global";
+
+<Tooltip>
+  Helpful contextual message
+</Tooltip>
+```
+
+<ParamField path="isOpen" type="boolean">
+  Controls whether the tooltip is visible. When omitted, the tooltip manages its own open state.
+</ParamField>
+
+<ParamField path="zIndex" type="number">
+  CSS `z-index` for stacking context control.
+</ParamField>
+
+## Modifier family pattern
+
+Many components accept props whose allowed values are defined by a _modifier family_ — a named set of design-system variants. The `ModifierFamily<T>` type from `@canonical/ds-types` resolves to the correct union.
+
+```tsx
+// Button anticipation: 'constructive' | 'caution' | 'destructive'
+<Button anticipation="constructive">Submit</Button>
+
+// Badge severity: 'neutral' | 'positive' | 'negative' | 'caution' | 'information'
+<Badge value={3} severity="negative" />
+```
+
+<Tip>
+  TypeScript narrows the allowed values automatically. Passing an invalid modifier family value is a compile-time error.
+</Tip>
+
+See [`@canonical/ds-types`](/reference/ds-types) for the full list of modifier families.
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Global components guide" icon="cubes" href="/components/global">
+    Conceptual overview of component tiers and usage patterns
+  </Card>
+  <Card title="Form components" icon="input-text" href="/reference/react-ds-global-form">
+    Field, Form, and withWrapper for react-hook-form integration
+  </Card>
+  <Card title="ds-types" icon="shield-check" href="/reference/ds-types">
+    ModifierFamily type and available modifier families
+  </Card>
+  <Card title="ds-assets" icon="image" href="/reference/ds-assets">
+    Full icon catalogue used by the Icon component
+  </Card>
+</CardGroup>

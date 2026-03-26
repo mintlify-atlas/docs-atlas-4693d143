@@ -1,0 +1,203 @@
+---
+title: "Generators & Scaffolding"
+description: "Scaffold new components and packages using the summon CLI or the Yeoman generator."
+keywords: ["generator", "scaffold", "summon", "yeoman", "component", "package"]
+---
+
+Pragma provides two generator tools for scaffolding new components and packages. Both produce files that follow the established conventions so you start with a consistent structure rather than hand-writing boilerplate.
+
+<Note>
+  Generated code has no special relationship to the generator after creation. Rename, restructure, or extend the files freely — the generator is only involved at scaffold time.
+</Note>
+
+## Summon CLI
+
+Summon is a generator framework. The `@canonical/summon-component` and `@canonical/summon-package` packages plug into it to provide component and package scaffolding.
+
+### Installation
+
+<Steps>
+  <Step title="Install the summon packages">
+    Install the core CLI and the generator packages as global links:
+
+    ```bash
+    cd packages/summon && bun link
+    cd packages/summon-component && bun link
+    cd packages/summon-package && bun link
+    ```
+
+    Or add them as dependencies and use `bunx`:
+
+    ```bash
+    bun add @canonical/summon @canonical/summon-component @canonical/summon-package
+    ```
+  </Step>
+
+  <Step title="Verify the installation">
+    List all available generators:
+
+    ```bash
+    summon --help
+    ```
+
+    You should see `component` and `package` listed as available topics.
+  </Step>
+</Steps>
+
+### Component scaffolding
+
+Run `summon component` from within a package directory to scaffold a new component. The last path segment becomes the component name.
+
+```bash
+# React component
+summon component react --component-path=src/lib/MyComponent
+
+# Svelte component
+summon component svelte --component-path=src/lib/MyComponent
+
+# Interactive mode — prompts guide you through options
+summon component react
+```
+
+For a React component at `src/lib/Button`, this creates:
+
+```
+src/lib/Button/
+├── Button.tsx           # Component implementation
+├── types.ts             # Props interface extending HTML attributes
+├── index.ts             # Barrel export
+├── Button.test.tsx      # Unit tests (Vitest + Testing Library)
+├── Button.ssr.test.tsx  # Server-side rendering tests
+├── Button.stories.tsx   # Storybook stories
+└── styles.css           # Component styles
+```
+
+It also appends to `src/lib/index.ts`:
+
+```typescript
+export * from "./Button";
+```
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--component-path` | Full path for the component | Interactive prompt |
+| `--with-styles` / `--no-with-styles` | Include or skip `styles.css` | `true` |
+| `--with-stories` / `--no-with-stories` | Include or skip Storybook stories | `true` |
+| `--with-ssr-tests` / `--no-with-ssr-tests` | Include or skip SSR test file | `true` |
+| `--dry-run`, `-d` | Preview files without writing them | — |
+| `--yes`, `-y` | Skip confirmation prompts | — |
+
+### Package scaffolding
+
+Run `summon package` from the monorepo root to scaffold a new package:
+
+```bash
+# Interactive — prompts guide you through options
+summon package
+
+# TypeScript tool (no build step, GPL-3.0)
+summon package --name=@canonical/my-tool --type=tool-ts
+
+# Publishable library (compiled output, LGPL-3.0)
+summon package --name=@canonical/my-lib --type=library
+
+# With React and Storybook
+summon package --name=@canonical/my-lib --type=library --with-react --with-storybook
+
+# Preview without writing
+summon package --name=@canonical/my-tool --type=tool-ts --dry-run
+```
+
+For a `tool-ts` package named `@canonical/my-tool`, this creates:
+
+```
+packages/my-tool/
+├── package.json      # type: module, main: src/index.ts, license: GPL-3.0
+├── tsconfig.json     # extends workspace TypeScript config
+├── biome.json        # extends @canonical/biome-config
+├── README.md
+└── src/
+    └── index.ts      # export entry point
+```
+
+#### Package types
+
+| Type | License | Entry point | Use for |
+|------|---------|-------------|--------|
+| `tool-ts` | GPL-3.0 | `src/index.ts` | CLI tools, scripts, generators, dev utilities |
+| `library` | LGPL-3.0 | `dist/esm/index.js` | Shared utilities, component libraries, public packages |
+| `css` | LGPL-3.0 | `src/index.css` | Design tokens, CSS utilities, style primitives |
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--name` | Full scoped package name (e.g., `@canonical/my-package`) | Interactive prompt |
+| `--type` | Package type: `tool-ts`, `library`, or `css` | Interactive prompt |
+| `--with-react` | Add React peer dependencies and JSX config | `false` |
+| `--with-storybook` | Add Storybook configuration and scripts | `false` |
+| `--with-cli` | Add a CLI binary entry point (`src/cli.ts`) | `false` |
+| `--no-run-install` | Skip the install step after creation | — |
+
+## Yeoman generator
+
+`@canonical/generator-ds` provides a Yeoman-based generator for scaffolding React components.
+
+### Installation
+
+```bash
+npm install -g yo @canonical/generator-ds
+```
+
+### Usage
+
+Run the generator from within a package directory:
+
+```bash
+yo @canonical/ds:component src/MyComponent
+```
+
+This creates the same seven-file component structure:
+
+```
+src/MyComponent/
+├── MyComponent.tsx
+├── types.ts
+├── index.ts
+├── MyComponent.tests.tsx
+├── MyComponent.ssr.tests.tsx
+├── MyComponent.stories.tsx
+└── styles.css
+```
+
+#### Flags
+
+| Flag | Description |
+|------|-------------|
+| `--withStyles` | Include `styles.css` (default: on) |
+| `--withStories` | Include Storybook stories (default: on) |
+| `--withoutSsrTests` | Skip the SSR test file |
+
+## Comparing the two generators
+
+<CardGroup cols={2}>
+  <Card title="summon component" icon="terminal">
+    Preferred for day-to-day use. Supports React, Svelte, and Lit. Interactive mode, dry-run preview, and barrel auto-update.
+  </Card>
+  <Card title="yo @canonical/ds:component" icon="bolt">
+    Yeoman-based alternative for React components. Useful if you already have Yeoman in your workflow.
+  </Card>
+</CardGroup>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Component structure" icon="folder-tree" href="/guides/component-structure">
+    Conventions that generated files follow.
+  </Card>
+  <Card title="Webarchitect" icon="shield-check" href="/tooling/webarchitect">
+    Validates that packages conform to the standards generators produce.
+  </Card>
+</CardGroup>

@@ -1,0 +1,86 @@
+---
+title: "@canonical/react-ds-app"
+description: "Application-tier React components for internal tools and Canonical web applications."
+sidebarTitle: "react-ds-app"
+---
+
+`@canonical/react-ds-app` is the application-tier component library. It provides UI components suited to application shells — navigation headers, toolbars, and similar chrome elements — rather than content-level primitives.
+
+<Warning>
+  This package is marked `private` in its package manifest and is not published to npm. It is consumed directly within the Pragma monorepo. Contact the Canonical Webteam before adding it as a dependency in an external project.
+</Warning>
+
+## Installation
+
+```bash
+bun add @canonical/react-ds-app @canonical/react-ds-global @canonical/styles react react-dom
+```
+
+## Exports
+
+| Export | Kind | Description |
+|--------|------|-------------|
+| `Button` | Component | Application-tier button with `appearance` prop |
+
+## Button
+
+The app-tier `Button` differs from the global-tier Button in that it uses a flat `appearance` string prop rather than the `importance` + `anticipation` modifier family pattern. This reflects its use in application shells where the vocabulary maps directly to visual states.
+
+```tsx
+import { Button } from "@canonical/react-ds-app";
+
+<Button appearance="positive">Approve</Button>
+<Button appearance="negative">Reject</Button>
+<Button appearance="neutral">Cancel</Button>
+<Button appearance="base">Settings</Button>
+<Button appearance="link">Learn more</Button>
+```
+
+### Props
+
+<ParamField path="appearance" type="'neutral' | 'base' | 'positive' | 'negative' | 'link'">
+  Visual style of the button.
+
+  - `neutral` — default appearance
+  - `base` — minimal, low-prominence style
+  - `positive` — affirmative actions (confirm, approve)
+  - `negative` — destructive or rejecting actions
+  - `link` — inline text link style
+</ParamField>
+
+<ParamField path="children" type="ReactNode" required>
+  Button label. Also used as the accessible `aria-label` when children is a plain string.
+</ParamField>
+
+<ParamField path="id" type="string">
+  HTML `id` for the button element.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes.
+</ParamField>
+
+All standard `ButtonHTMLAttributes` are forwarded to the underlying `<button>` element.
+
+## Comparing global and app tiers
+
+| | `@canonical/react-ds-global` Button | `@canonical/react-ds-app` Button |
+|---|---|---|
+| Modifier pattern | `importance` + `anticipation` | `appearance` |
+| Example | `importance="primary" anticipation="destructive"` | `appearance="negative"` |
+| Use when | Content pages, forms, cards | Application chrome, toolbars |
+
+<Tip>
+  Prefer the global-tier Button for new features unless you are building application shell UI. The global tier follows the Design System Ontology more closely.
+</Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="App components guide" icon="window" href="/components/app">
+    Conceptual overview of application-tier components
+  </Card>
+  <Card title="react-ds-global" icon="cubes" href="/reference/react-ds-global">
+    Global-tier components — Button, Card, Badge, and more
+  </Card>
+</CardGroup>

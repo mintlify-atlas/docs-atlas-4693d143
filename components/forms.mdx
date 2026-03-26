@@ -1,0 +1,425 @@
+---
+title: "Form Components"
+description: "react-hook-form-integrated form controls from @canonical/react-ds-global-form, with built-in validation, custom field support, and composable middleware."
+keywords: ["form", "field", "input", "validation", "react-hook-form", "custom fields", "middleware"]
+---
+
+`@canonical/react-ds-global-form` provides form controls built on top of [react-hook-form](https://react-hook-form.com/). It handles form registration, label and description rendering, error message display, and ARIA attribute injection so you can focus on field logic rather than wiring.
+
+The package exports three main concepts:
+
+- **`Form`** — a form shell that wraps `FormProvider` from react-hook-form
+- **`Field`** — a unified component that renders the correct input based on `inputType`
+- **`middleware`** — HOC factories for adding cross-cutting behaviour to any field
+
+## Installation
+
+```bash
+bun add @canonical/react-ds-global-form react-hook-form
+```
+
+Import styles at your application entry point:
+
+```typescript
+import "@canonical/styles";
+```
+
+## Form
+
+`Form` wraps `FormProvider` and renders a `<form>` element. It can manage its own `useForm` instance or accept an externally created one.
+
+```tsx
+import { Form, Field } from "@canonical/react-ds-global-form";
+
+function ContactForm() {
+  const handleSubmit = (data: Record<string, unknown>) => {
+    console.log(data);
+  };
+
+  return (
+    <Form
+      onSubmit={handleSubmit}
+      defaultValues={{ name: "", email: "", message: "" }}
+      mode="onBlur"
+    >
+      <Field name="name" inputType="text" label="Full name" />
+      <Field name="email" inputType="email" label="Email address" />
+      <Field name="message" inputType="textarea" label="Message" />
+      <button type="submit">Send</button>
+    </Form>
+  );
+}
+```
+
+To share form state between `Form` and other components, create the `useForm` instance yourself and pass it via the `methods` prop:
+
+```tsx
+import { useForm } from "react-hook-form";
+import { Form, Field } from "@canonical/react-ds-global-form";
+
+function AdvancedForm() {
+  const methods = useForm({ defaultValues: { username: "" } });
+  const username = methods.watch("username");
+
+  return (
+    <>
+      <p>Typing: {username}</p>
+      <Form methods={methods} onSubmit={(data) => console.log(data)}>
+        <Field name="username" inputType="text" label="Username" />
+        <button type="submit">Submit</button>
+      </Form>
+    </>
+  );
+}
+```
+
+**`Form` props:**
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `onSubmit` | `(data) => void \| Promise<void>` | Called with validated form data on submit |
+| `defaultValues` | `object` | Initial field values. Ignored when `methods` is provided |
+| `mode` | `UseFormProps["mode"]` | Validation trigger: `"onBlur"`, `"onChange"`, `"onSubmit"` (default), `"all"` |
+| `methods` | `UseFormReturn` | External `useForm` instance. When provided, `Form` skips its own `useForm` call |
+
+## Field
+
+`Field` is a single component that renders the correct input element based on the `inputType` prop. It automatically wires up label rendering, description text, error messages, and all required ARIA attributes.
+
+### inputType values
+
+| `inputType` | Renders | Notes |
+|-------------|---------|-------|
+| `"text"` | `<input type="text">` | Default for unrecognised types |
+| `"email"` | `<input type="email">` | |
+| `"password"` | `<input type="password">` | |
+| `"number"` | `<input type="number">` | |
+| `"url"` | `<input type="url">` | |
+| `"textarea"` | `<textarea>` | |
+| `"checkbox"` | `<input type="checkbox">` | |
+| `"select"` | `<select>` | Requires `options` prop |
+| `"combobox"` | Combobox with filtering | Requires `options` prop |
+| `"simple-choices"` | Radio group (simplified) | Requires `options` prop |
+| `"choices"` | Radio group (full) | Requires `options` prop |
+| `"range"` | `<input type="range">` | |
+| `"date"` | `<input type="date">` | |
+| `"time"` | `<input type="time">` | |
+| `"datetime"` | `<input type="datetime-local">` | |
+| `"file"` | `<input type="file">` | |
+| `"color"` | `<input type="color">` | |
+| `"phone"` | Phone input with country code | |
+| `"hidden"` | `<input type="hidden">` | No label or description rendered |
+| `"custom"` | Your component | Requires `CustomComponent` prop |
+
+### Basic examples
+
+```tsx
+import { Form, Field } from "@canonical/react-ds-global-form";
+
+// Text input with validation
+<Field
+  name="email"
+  inputType="email"
+  label="Email address"
+  description="We'll only use this to send you account notifications."
+  registerProps={{
+    required: "Email is required",
+    pattern: {
+      value: /^[^@]+@[^@]+\.[^@]+$/,
+      message: "Enter a valid email address",
+    },
+  }}
+/>
+
+// Select with options
+<Field
+  name="country"
+  inputType="select"
+  label="Country"
+  options={[
+    { value: "gb", label: "United Kingdom" },
+    { value: "us", label: "United States" },
+    { value: "au", label: "Australia" },
+  ]}
+/>
+
+// Optional field
+<Field
+  name="bio"
+  inputType="textarea"
+  label="Biography"
+  isOptional
+/>
+```
+
+**Common `Field` props:**
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `name` | `string` | Field name used for form registration and data key |
+| `inputType` | (see table above) | Determines which input to render |
+| `label` | `string` | Label text rendered above the input |
+| `description` | `string` | Descriptive text rendered below the label |
+| `isOptional` | `boolean` | Appends an optional indicator to the label |
+| `registerProps` | `RegisterOptions` | react-hook-form validation rules |
+| `middleware` | `Middleware[]` | HOC chain applied to the input |
+| `condition` | `[string[], (values) => boolean]` | Conditionally renders the field based on other field values |
+
+## Adding a custom field
+
+Use `inputType="custom"` when no built-in input type covers your use case. Custom fields must satisfy the `InputProps` type and be wrapped with the `withWrapper` HOC.
+
+<Steps>
+  <Step title="Define the props type">
+    Extend `InputProps` with any additional props your component needs.
+
+    ```typescript
+    import type { InputProps } from "@canonical/react-ds-global-form";
+
+    type ColorPickerProps = InputProps<{
+      swatches?: string[];
+      showHexInput?: boolean;
+    }>;
+    ```
+
+    The base `InputProps` includes `name`, `registerProps`, and all required ARIA attributes (`aria-labelledby`, `aria-describedby`, `aria-errormessage`, `aria-invalid`).
+  </Step>
+  <Step title="Create the input component">
+    Use `useFormContext` from react-hook-form to register the field. Pass through all ARIA attributes to your underlying input element.
+
+    ```typescript
+    import { useFormContext } from "react-hook-form";
+
+    const ColorPickerInput = ({
+      name,
+      registerProps,
+      swatches = ["#ff0000", "#00ff00", "#0000ff"],
+      showHexInput = true,
+      "aria-labelledby": ariaLabelledby,
+      "aria-describedby": ariaDescribedby,
+      "aria-errormessage": ariaErrormessage,
+      "aria-invalid": ariaInvalid,
+    }: ColorPickerProps) => {
+      const { register, watch, setValue } = useFormContext();
+      const currentValue = watch(name);
+
+      return (
+        <div className="color-picker">
+          <div className="swatches" role="listbox" aria-labelledby={ariaLabelledby}>
+            {swatches.map((color) => (
+              <button
+                key={color}
+                type="button"
+                role="option"
+                aria-selected={currentValue === color}
+                style={{ backgroundColor: color }}
+                onClick={() => setValue(name, color, { shouldValidate: true })}
+                aria-label={`Select color ${color}`}
+              />
+            ))}
+          </div>
+          {showHexInput && (
+            <input
+              type="text"
+              placeholder="#000000"
+              aria-labelledby={ariaLabelledby}
+              aria-describedby={ariaDescribedby}
+              aria-errormessage={ariaErrormessage}
+              aria-invalid={ariaInvalid}
+              {...register(name, registerProps)}
+            />
+          )}
+        </div>
+      );
+    };
+    ```
+  </Step>
+  <Step title="Wrap with withWrapper">
+    `withWrapper` injects form registration, label rendering, error display, and ARIA wiring. Without it, your component won't integrate with the form system.
+
+    ```typescript
+    import { withWrapper } from "@canonical/react-ds-global-form";
+
+    export const ColorPicker = withWrapper<ColorPickerProps>(ColorPickerInput);
+    ```
+
+    For fieldset-based inputs (where `<legend>` is more semantically appropriate than `<label>`), pass the `mockLabel` option:
+
+    ```typescript
+    export const MyFieldset = withWrapper<MyProps>(MyComponent, {
+      mockLabel: true,
+    });
+    ```
+  </Step>
+  <Step title="Use with Field">
+    Pass your wrapped component as `CustomComponent`:
+
+    ```tsx
+    import { Form, Field } from "@canonical/react-ds-global-form";
+    import { ColorPicker } from "./ColorPicker";
+
+    <Form onSubmit={console.log}>
+      <Field
+        name="brandColor"
+        inputType="custom"
+        CustomComponent={ColorPicker}
+        label="Brand color"
+        description="Choose your primary brand color"
+        swatches={["#E95420", "#0066CC", "#333333"]}
+      />
+      <button type="submit">Save</button>
+    </Form>
+    ```
+  </Step>
+</Steps>
+
+<Tip>
+  For third-party components that require a controlled `value` prop, use react-hook-form's `Controller` inside your input component instead of `register`. See the [custom fields guide](/guides/custom-fields) for a full controlled example.
+</Tip>
+
+## Middleware
+
+Middleware wraps field components with HOC composition to add cross-cutting behaviour without modifying the field itself.
+
+The middleware signature is:
+
+```typescript
+type Middleware<ComponentProps> = (
+  Component: React.ComponentType<ComponentProps>
+) => React.ComponentType<ComponentProps>;
+```
+
+### Built-in middleware
+
+The package ships two middleware for common patterns:
+
+**`addRESTOptions`** — fetches options from an API endpoint and injects them as the `options` prop:
+
+```typescript
+import { addRESTOptions } from "@canonical/react-ds-global-form";
+
+<Field
+  name="country"
+  inputType="select"
+  label="Country"
+  middleware={[
+    addRESTOptions("/api/countries", {
+      method: "GET",
+      headers: { "Accept": "application/json" },
+      transformData: (data) => data.countries,
+    }),
+  ]}
+/>
+```
+
+**`addRESTValidation`** — validates the field value against an API endpoint on change:
+
+```typescript
+import { addRESTValidation } from "@canonical/react-ds-global-form";
+
+<Field
+  name="username"
+  inputType="text"
+  label="Username"
+  middleware={[
+    addRESTValidation("/api/check-username", {
+      debounceWait: 300,
+      minLength: 3,
+      errorExtractor: async (response) => {
+        const data = await response.json();
+        return data.message;
+      },
+    }),
+  ]}
+/>
+```
+
+### Custom middleware
+
+A middleware factory returns the actual middleware HOC. Use `useFormContext` to interact with form state:
+
+```typescript
+import { createElement, useState, useEffect } from "react";
+import { useFormContext } from "react-hook-form";
+import type { Middleware } from "@canonical/react-ds-global-form";
+
+function addFetchRelated(options: {
+  endpoint: string;
+  watchField: string;
+  targetProp?: string;
+}): Middleware<any> {
+  const { endpoint, watchField, targetProp = "relatedData" } = options;
+
+  return (WrappedComponent) => {
+    return function FetchRelatedComponent(props) {
+      const [data, setData] = useState(null);
+      const { watch } = useFormContext();
+      const watchValue = watch(watchField);
+
+      useEffect(() => {
+        if (!watchValue) return;
+        fetch(`${endpoint}?${watchField}=${encodeURIComponent(watchValue)}`)
+          .then((r) => r.json())
+          .then(setData);
+      }, [watchValue]);
+
+      return createElement(WrappedComponent, { ...props, [targetProp]: data });
+    };
+  };
+}
+```
+
+Use it on a field:
+
+```tsx
+<Field
+  name="city"
+  inputType="select"
+  label="City"
+  middleware={[
+    addFetchRelated({
+      endpoint: "/api/cities",
+      watchField: "country",
+      targetProp: "options",
+    }),
+  ]}
+/>
+```
+
+### Middleware composition
+
+Multiple middleware compose in array order. The first entry becomes the outermost wrapper:
+
+```tsx
+<Field
+  name="product"
+  inputType="combobox"
+  label="Product"
+  middleware={[
+    withAnalytics("product-search"),  // outermost
+    addRESTOptions("/api/products"),   // middle
+    withDebounce(300),                 // innermost
+  ]}
+/>
+```
+
+<Note>
+  Always debounce middleware that makes API calls on value changes. Use the `debounce` utility from `@canonical/utils` or the `debounceWait` option on `addRESTValidation`.
+</Note>
+
+## Further reading
+
+<CardGroup cols={2}>
+  <Card title="Custom fields guide" icon="puzzle-piece" href="/guides/custom-fields">
+    Full walkthrough including controlled components and fieldset patterns
+  </Card>
+  <Card title="Package reference" icon="book" href="/reference/react-ds-global-form">
+    Full API reference for @canonical/react-ds-global-form
+  </Card>
+  <Card title="Global Components" icon="cubes" href="/components/global">
+    UI primitives used alongside form fields
+  </Card>
+  <Card title="Design tokens" icon="circle-half-stroke" href="/styles/tokens">
+    CSS custom properties for theming form elements
+  </Card>
+</CardGroup>

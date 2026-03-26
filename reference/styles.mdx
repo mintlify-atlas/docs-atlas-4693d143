@@ -1,0 +1,89 @@
+---
+title: "@canonical/styles"
+description: "Aggregated CSS stylesheet for Pragma — a single import that pulls in all style layers in the correct order."
+sidebarTitle: "styles"
+---
+
+`@canonical/styles` is the aggregator package for Pragma's CSS architecture. A single import brings in normalize.css, typography tokens, design tokens, grid presets, and all modifier layers in the correct cascade order.
+
+## Installation
+
+```bash
+bun add @canonical/styles
+```
+
+## Usage
+
+Import once at your application entry point:
+
+```typescript
+import "@canonical/styles";
+```
+
+With a CSS bundler:
+
+```css
+@import url("@canonical/styles");
+```
+
+<Tip>
+  For most applications, this single import is all you need. Only reach for individual style packages if you need fine-grained control over the cascade.
+</Tip>
+
+## What it includes
+
+`@canonical/styles` imports the following layers in order:
+
+| Layer | Source | Purpose |
+|-------|--------|---------|
+| `normalize` | `normalize.css` | Cross-browser baseline reset |
+| Typography | `@canonical/styles-typography` | Baseline grid engine and type scale tokens |
+| Primitive tokens | `@canonical/design-tokens` (sets.primitive) | Raw colour, spacing, and surface values |
+| Theme modifiers | `@canonical/design-tokens` (modifiers.theme) | Light/dark colour scheme |
+| Surface modifiers | `@canonical/design-tokens` (modifiers.surfaces) | Elevation and surface variants |
+| Anticipation modifiers | `@canonical/design-tokens` (modifiers.anticipation) | Constructive/caution/destructive colour mappings |
+| Criticality modifiers | `@canonical/design-tokens` (modifiers.criticality) | Success/error/warning/information colour mappings |
+| Emphasis modifiers | `@canonical/design-tokens` (modifiers.emphasis) | Primary/secondary/tertiary prominence |
+| Importance modifiers | `@canonical/design-tokens` (modifiers.importance) | Importance hierarchy |
+| State styles | `@canonical/design-tokens` (states) | Focus, hover, disabled states |
+| Grid | `grid.css` | Layout grid presets |
+
+## Layer ordering
+
+`@canonical/styles` declares explicit `@layer` ordering at the top of its stylesheet:
+
+```css
+@layer normalize, ds.reset, ds.modifiers, ds.components;
+```
+
+This ensures that component styles (in `ds.components`) always override modifier styles (in `ds.modifiers`), which override the reset — regardless of source order in the bundle.
+
+## When to use individual packages
+
+Use `@canonical/styles` by default. Reach for individual packages only when:
+
+- You are building a micro-frontend that must not include the full stylesheet
+- You need to control which modifier families are active
+- You are embedding Pragma components inside a third-party design system
+
+See the individual package reference pages for granular import instructions:
+
+- [`@canonical/styles-primitives-canonical`](/reference/styles-primitives) — design tokens only
+- Mode packages — [`@canonical/styles-modes-canonical`](/reference/styles-modes), density, intents, motion
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Styles overview" icon="palette" href="/styles/overview">
+    Architecture overview of Pragma's CSS layer system
+  </Card>
+  <Card title="Design tokens" icon="circle-half-stroke" href="/styles/tokens">
+    CSS custom properties and token naming conventions
+  </Card>
+  <Card title="Modes" icon="sliders" href="/styles/modes">
+    Colour modes, density variants, and motion preferences
+  </Card>
+  <Card title="Styles primitives" icon="droplet" href="/reference/styles-primitives">
+    Raw design tokens as CSS custom properties
+  </Card>
+</CardGroup>

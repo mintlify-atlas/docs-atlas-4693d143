@@ -1,0 +1,215 @@
+---
+title: "Svelte Components"
+description: "Svelte 5 UI components from @canonical/svelte-ds-app-launchpad — Launchpad-specific components built with runes and floating-ui positioning."
+keywords: ["svelte", "svelte 5", "launchpad", "chip", "button", "popover", "components"]
+---
+
+`@canonical/svelte-ds-app-launchpad` provides Svelte 5 components for Launchpad and Workplace Engineering applications. These components are focused on Launchpad-specific use cases and are built using Svelte 5 runes (`$props`, `$derived`, `$bindable`).
+
+<Info>
+  This package targets Svelte 5 exclusively. It is not compatible with Svelte 4. If you are building a React application, use the [Global Components](/components/global) or [App Components](/components/app) packages instead.
+</Info>
+
+## Installation
+
+```bash
+bun add @canonical/svelte-ds-app-launchpad
+```
+
+Import the component stylesheet and Launchpad design tokens in your layout file (e.g. `src/routes/+layout.svelte`):
+
+```svelte
+<script lang="ts">
+  import "@canonical/svelte-ds-app-launchpad/styles.css";
+
+  import "@canonical/launchpad-design-tokens/dist/css/dimension/responsive.css";
+  import "@canonical/launchpad-design-tokens/dist/css/typography/responsive.css";
+  import "@canonical/launchpad-design-tokens/dist/css/opacity/opacity.css";
+  import "@canonical/launchpad-design-tokens/dist/css/transition/preferred.css";
+  import "@canonical/launchpad-design-tokens/dist/css/color/light.css"; // or dark.css / system.css
+</script>
+```
+
+<Note>
+  This package depends on `@canonical/launchpad-design-tokens` for its CSS custom properties. Install it alongside the component package:
+
+  ```bash
+  bun add @canonical/launchpad-design-tokens
+  ```
+</Note>
+
+## Available components
+
+| Component | Description |
+|-----------|-------------|
+| `Badge` | Status indicator or count label |
+| `Breadcrumbs` | Navigation trail for the current page hierarchy |
+| `Button` | Styled button with severity, density, loading state, and icon slots |
+| `Checkbox` | Checkbox input |
+| `Chip` | Compact tag with optional lead text, badge, icon, and dismiss action |
+| `DescriptionList` | Structured key-value list |
+| `Link` | Styled anchor element |
+| `NumberInput` | Numeric input field |
+| `Popover` | Floating content panel positioned with `@floating-ui/dom` |
+| `Radio` | Radio button input |
+| `Spinner` | Loading indicator |
+| `Switch` | Toggle switch |
+| `Textarea` | Multi-line text input |
+| `TextInput` | Single-line text input |
+
+## Usage examples
+
+### Button
+
+`Button` supports `severity` and `density` modifier props, optional icon snippets, and a built-in `loading` state that renders a `Spinner`.
+
+```svelte
+<script lang="ts">
+  import { Button } from "@canonical/svelte-ds-app-launchpad";
+  import { Check, ArrowRight } from "@canonical/svelte-icons";
+</script>
+
+<!-- Default button -->
+<Button>Save changes</Button>
+
+<!-- Brand severity with dense density -->
+<Button severity="brand" density="dense">Create</Button>
+
+<!-- With icon slots -->
+<Button severity="brand">
+  {#snippet iconLeft()}
+    <Check />
+  {/snippet}
+  Confirm
+  {#snippet iconRight()}
+    <ArrowRight />
+  {/snippet}
+</Button>
+
+<!-- Loading state -->
+<Button loading>Saving...</Button>
+```
+
+### Chip
+
+`Chip` displays compact, actionable pieces of information. It renders as a `<button>` when `onclick` is provided, or a `<span>` when it is read-only or dismissible.
+
+```svelte
+<script lang="ts">
+  import { Chip } from "@canonical/svelte-ds-app-launchpad";
+</script>
+
+<!-- Basic chip -->
+<Chip value="Ubuntu" />
+
+<!-- With a lead label -->
+<Chip lead="OS" value="Ubuntu 24.04 LTS" />
+
+<!-- Severity modifier -->
+<Chip lead="Status" value="Critical" severity="caution" />
+
+<!-- Dense + read-only -->
+<Chip lead="Tag" value="production" density="dense" readonly />
+
+<!-- Dismissible -->
+<Chip
+  lead="Filter"
+  value="amd64"
+  ondismiss={() => removeFilter("amd64")}
+/>
+```
+
+**`Chip` props:**
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `value` | `string` | The main chip text |
+| `lead` | `string` | Optional prefix label rendered before the value |
+| `severity` | modifier | Severity modifier (e.g. `"caution"`, `"positive"`, `"negative"`) |
+| `density` | modifier | Density modifier (e.g. `"dense"`) |
+| `readonly` | `boolean` | Renders as `<span>` and removes interactive affordance |
+| `ondismiss` | `() => void` | When provided, renders a dismiss button inside the chip |
+| `onclick` | `() => void` | When provided (and not read-only), renders as a `<button>` |
+| `icon` | snippet | Svelte snippet rendered before the lead |
+| `badge` | snippet | Svelte snippet rendered after the value |
+
+### Popover
+
+`Popover` uses `@floating-ui/dom` to position floating content panels across browsers, providing a reliable fallback until native CSS anchored positioning (`position-area`) has broad support.
+
+```svelte
+<script lang="ts">
+  import { Popover } from "@canonical/svelte-ds-app-launchpad";
+  let open = $state(false);
+</script>
+
+<button onclick={() => (open = !open)}>Toggle menu</button>
+
+<Popover {open}>
+  <p>Popover content goes here.</p>
+</Popover>
+```
+
+## Svelte 5 runes pattern
+
+All components in this package are written with Svelte 5 runes. Props are declared with `$props()`, reactive derivations use `$derived()`, and bindable refs use `$bindable()`.
+
+```svelte
+<script lang="ts">
+  import { Button } from "@canonical/svelte-ds-app-launchpad";
+
+  let buttonRef = $state<HTMLButtonElement | null>(null);
+</script>
+
+<Button bind:ref={buttonRef}>Focus me</Button>
+```
+
+## Modifier families
+
+Svelte components use the same modifier family concept as the React packages. Modifier values are passed as props and applied directly as CSS class names:
+
+```svelte
+<!-- Renders: class="ds chip caution dense" -->
+<Chip value="warning" severity="caution" density="dense" />
+```
+
+Modifier types are exported from the package for use in TypeScript:
+
+```typescript
+import type { Severity, Density } from "@canonical/svelte-ds-app-launchpad";
+```
+
+## Testing
+
+Tests use Vitest in browser mode, which requires Playwright. Install Playwright browsers once before running tests:
+
+```bash
+bunx playwright install
+```
+
+Then run the full test suite:
+
+```bash
+bun run test:client && bun run test:ssr && bun run test:server
+```
+
+<Warning>
+  Browser mode testing with Vitest is currently experimental in Pragma. The `test:client` suite requires a Chromium, Firefox, or WebKit browser to be available.
+</Warning>
+
+## Further reading
+
+<CardGroup cols={2}>
+  <Card title="Global Components" icon="cubes" href="/components/global">
+    React UI primitives for cross-application use
+  </Card>
+  <Card title="App Components" icon="layout" href="/components/app">
+    React application-level components
+  </Card>
+  <Card title="Design tokens" icon="circle-half-stroke" href="/styles/tokens">
+    CSS custom properties and modifier families
+  </Card>
+  <Card title="Tooling: Storybook" icon="book-open" href="/tooling/storybook">
+    Run Storybook to browse components interactively
+  </Card>
+</CardGroup>

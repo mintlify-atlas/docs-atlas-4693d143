@@ -1,80 +1,112 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Install Pragma packages and render your first component in under five minutes."
 ---
 
-## Get started in three steps
+## Prerequisites
 
-Get your documentation site running locally and make your first customization.
+Before you start, make sure you have the following installed:
 
-### Step 1: Set up your local environment
+- **Bun 1.3.9 or later** — used for package management and script execution
+- **React 19 or later** — required peer dependency for component packages
+- **Node.js 22.12 or 24** — required for Storybook and Lerna
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+<Warning>
+  Node 22.x earlier than 22.12 has module resolution issues. Node 23 has a known compatibility issue and should be avoided. Install Node using nvm rather than snap to avoid permission and build issues.
+</Warning>
 
-### Step 2: Deploy your changes
+## Installation
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+<Steps>
+  <Step title="Install the component package">
+    Add the global component library, styles aggregator, and React peer dependencies to your project.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    ```bash
+    bun add @canonical/react-ds-global @canonical/styles react react-dom
+    ```
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    <Note>
+      All Pragma packages share a single version number. You can safely add other Pragma packages at the same version — for example, `@canonical/ds-types` for TypeScript modifier types or `@canonical/react-ds-global-form` for form controls.
+    </Note>
+  </Step>
 
-### Step 3: Go live
+  <Step title="Import the stylesheet">
+    Import `@canonical/styles` once at your application entry point. This aggregates all CSS layers — design tokens, base element styles, colour modes, and density variants — in the correct order.
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    ```typescript
+    import "@canonical/styles";
+    ```
+
+    Your entry point is typically `main.tsx`, `App.tsx`, or the root layout file depending on your framework.
+  </Step>
+
+  <Step title="Render your first component">
+    Import components by name from `@canonical/react-ds-global` and use them in your JSX.
+
+    ```tsx
+    import { Button } from "@canonical/react-ds-global";
+
+    export default function App() {
+      return (
+        <Button importance="primary" anticipation="constructive">
+          Get started
+        </Button>
+      );
+    }
+    ```
+  </Step>
+
+  <Step title="Compose a richer example">
+    The example below combines `Button`, `Card`, and `Icon` to build a typical UI surface. `Card` uses subcomponents — `Card.Header`, `Card.Image`, and `Card.Content` — composed directly in JSX rather than configured through props.
+
+    ```tsx
+    import { Button, Card, Icon } from "@canonical/react-ds-global";
+
+    export default function FeatureCard() {
+      return (
+        <Card emphasis="highlighted">
+          <Card.Image
+            src="/images/feature-preview.png"
+            alt="Feature preview screenshot"
+          />
+          <Card.Header>
+            <h3>New feature available</h3>
+          </Card.Header>
+          <Card.Content>
+            <p>Deploy to production with a single command.</p>
+            <Button
+              importance="primary"
+              anticipation="constructive"
+              icon={<Icon icon="arrow-right" />}
+              iconPosition="end"
+            >
+              Deploy now
+            </Button>
+          </Card.Content>
+        </Card>
+      );
+    }
+    ```
+
+    <Tip>
+      The `Icon` component renders SVG icons from `@canonical/ds-assets` using an `<svg><use>` reference. Icons are served as static files — make sure your build tool copies the `icons/` directory from `@canonical/ds-assets/dist` to your public folder, or configure the `rootPath` prop on `Icon` to point to wherever you serve them.
+    </Tip>
+  </Step>
+</Steps>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Global components" icon="cubes" href="/components/global">
+    Browse all components in the global tier: Button, Card, Badge, Accordion, Tooltip, and more
+  </Card>
+  <Card title="Form components" icon="input-text" href="/components/forms">
+    Form controls with react-hook-form integration and built-in validation
+  </Card>
+  <Card title="Styles & theming" icon="palette" href="/styles/overview">
+    Design tokens, colour modes, density variants, and motion preferences
+  </Card>
+  <Card title="Package reference" icon="box" href="/reference/react-ds-global">
+    Full API reference for `@canonical/react-ds-global`
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

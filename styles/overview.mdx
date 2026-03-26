@@ -1,0 +1,121 @@
+---
+title: "Styles overview"
+description: "Pure CSS architecture for Pragma — no preprocessors, no CSS-in-JS, no runtime overhead."
+sidebarTitle: "Overview"
+keywords: ["styles", "CSS", "architecture", "custom properties", "design system"]
+---
+
+Pragma's styling system is built on plain CSS. There are no preprocessors, no CSS-in-JS libraries, and no build-time transformations beyond standard bundling. The stylesheet you read in the source is the stylesheet that runs in the browser.
+
+This decision keeps styles understandable to anyone who knows CSS, eliminates runtime overhead from style injection, and ensures styles work correctly during server-side rendering without hydration concerns.
+
+## Layered package architecture
+
+Rather than a single monolithic stylesheet, Pragma's styles are split across focused packages that build on each other in a defined order.
+
+| Package | Layer | Purpose |
+|---|---|---|
+| `@canonical/styles-primitives-canonical` | `primitives` | Raw design tokens as CSS custom properties — colours, spacing, typography, and dimension scales |
+| `@canonical/styles-elements` | `elements` | Base HTML element styling built on top of normalize.css |
+| `@canonical/styles-modes-canonical` | `modes` | Canonical colour theme |
+| `@canonical/styles-modes-density` | `modes` | Density variants — compact and comfortable spacing |
+| `@canonical/styles-modes-intents` | `modes` | Intent modifiers — positive, negative, caution, information |
+| `@canonical/styles-modes-motion` | `modes` | Animation preferences — reduced and normal motion |
+| `@canonical/styles` | aggregator | Single entry point that imports all layers in the correct order |
+
+Applications almost always import only `@canonical/styles`. The aggregator handles the ordering so you do not need to manage layer dependencies yourself.
+
+## Importing styles in an app
+
+<Steps>
+  <Step title="Install the package">
+    ```bash
+    npm install @canonical/styles
+    ```
+  </Step>
+  <Step title="Import once at your application entry point">
+    ```typescript
+    // main.ts or App.tsx — import once, globally
+    import "@canonical/styles";
+    ```
+
+    If you use a CSS bundler or PostCSS pipeline you can also use a CSS `@import`:
+
+    ```css
+    @import url("@canonical/styles");
+    ```
+  </Step>
+  <Step title="Apply a mode class to your root element">
+    ```tsx
+    export function App() {
+      return (
+        <div className="canonical">
+          {/* your application content */}
+        </div>
+      );
+    }
+    ```
+
+    The `canonical` class activates Canonical's colour theme from `@canonical/styles-modes-canonical`.
+  </Step>
+</Steps>
+
+## Component-colocated styles
+
+Component styles live with their components rather than in the styles packages. Each component imports its own `styles.css` directly:
+
+```typescript
+// Button/Button.tsx
+import "./styles.css";
+```
+
+This co-location means styles are discoverable by reading the component folder. It also enables tree-shaking — unused components do not add their styles to the bundle.
+
+The `styles.css` file for each component declares CSS custom properties that reference the global design tokens. Those tokens cascade through the document and can be overridden at any level without touching the component.
+
+## The `ds` namespace class pattern
+
+Component selectors use a two-class namespace: the `ds` class marks an element as part of the design system, and the component name identifies the specific component.
+
+```css
+/* From Button/styles.css */
+.ds.button {
+  background-color: var(--button-color-background);
+  color: var(--button-color-text);
+}
+
+.ds.button.link {
+  background-color: transparent;
+  text-decoration: underline;
+}
+```
+
+In React components, the class list is constructed explicitly:
+
+```tsx
+className={["ds", "button", appearance, className]
+  .filter(Boolean)
+  .join(" ")}
+```
+
+This means modifiers like `positive`, `negative`, or `primary` are passed as plain class names. No wrapper functions, no class name generation at runtime.
+
+## How CSS custom properties enable theming
+
+Custom properties cascade through the DOM. A property set on a parent element is inherited by all descendants unless overridden. Pragma uses this to create a layered theming system:
+
+1. **Primitive tokens** (`--tmp-color-palette-green-8`, `--spacing-horizontal-large`) are set on `:root` and provide raw values.
+2. **Semantic tokens** (`--button-color-background`) are set per-component on `:root` and reference primitive tokens.
+3. **Modifier tokens** (`--modifier-color`, `--modifier-importance-background`) are set by modifier classes on ancestor elements.
+4. **Components** consume modifier tokens first, falling back to semantic tokens, then primitive tokens.
+
+This means overriding a single modifier class can restyle an entire subtree without touching component code.
+
+<CardGroup cols={2}>
+  <Card title="Design tokens" icon="swatch" href="/styles/tokens">
+    Token naming conventions, the fallback chain pattern, and how to override tokens at the component or container level.
+  </Card>
+  <Card title="Modes & theming" icon="moon" href="/styles/modes">
+    Colour modes, density variants, intent classes, and motion preferences.
+  </Card>
+</CardGroup>

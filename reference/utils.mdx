@@ -1,0 +1,316 @@
+---
+title: "@canonical/utils"
+description: "Battle-tested utility functions for Canonical's web engineering team — debounce, throttle, invariant, casing, humanizeNumber, and pluralize."
+sidebarTitle: "utils"
+---
+
+`@canonical/utils` provides shared utility functions used across the Pragma monorepo. Functions are only added after proving useful in at least two packages; this keeps the package small and avoids premature abstraction.
+
+## Installation
+
+```bash
+bun add @canonical/utils
+```
+
+## debounce
+
+Creates a debounced version of a function that delays its execution until after `delay` milliseconds have elapsed since the last call. Returns a `Promise` that resolves with the function's return value, plus a `.cancel()` method to abort a pending execution.
+
+```typescript
+import { debounce } from "@canonical/utils";
+
+const debouncedSearch = debounce(async (query: string) => {
+  const res = await fetch(`/api/search?q=${query}`);
+  return res.json();
+}, 300);
+
+// Each keystroke resets the timer; only the last fires after 300ms
+input.addEventListener("input", (e) => {
+  debouncedSearch(e.target.value).then(setResults);
+});
+
+// Cancel a pending execution
+const pending = debouncedSearch("hello");
+pending.cancel();
+```
+
+### Signature
+
+```typescript
+function debounce<F extends (...args: Parameters<F>) => ReturnType<F>>(
+  fn: F,
+  delay: number
+): ((...args: Parameters<F>) => Promise<ReturnType<F>>) & { cancel(): void }
+```
+
+<ParamField path="fn" type="F" required>
+  The function to debounce. Can be synchronous or async.
+</ParamField>
+
+<ParamField path="delay" type="number" required>
+  Time in milliseconds to wait after the last call before invoking `fn`.
+</ParamField>
+
+**Returns** a debounced function that returns a `Promise<ReturnType<F>>`. The returned function also has a `.cancel()` method that clears the pending timer.
+
+## throttle
+
+Limits a function to fire at most once every `wait` milliseconds. Unlike `debounce`, `throttle` guarantees the function fires at regular intervals during sustained activity.
+
+```typescript
+import { throttle } from "@canonical/utils";
+
+window.addEventListener(
+  "resize",
+  throttle(() => {
+    recalculateLayout();
+  }, 500)
+);
+```
+
+### Signature
+
+```typescript
+function throttle<T extends (...args: Parameters<T>) => ReturnType<T>>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void
+```
+
+<ParamField path="func" type="T" required>
+  The function to throttle.
+</ParamField>
+
+<ParamField path="wait" type="number" required>
+  Minimum time in milliseconds between invocations.
+</ParamField>
+
+**Returns** a throttled wrapper that fires `func` at most once every `wait` ms.
+
+## invariant
+
+Asserts that a condition is truthy. Throws an `Error` if it is not. Supports lazy message evaluation and a custom prefix.
+
+```typescript
+import { invariant } from "@canonical/utils";
+
+const value: string | undefined = getConfig("api_url");
+invariant(value !== undefined, "api_url is required");
+// TypeScript now knows: value is string
+
+// Lazy evaluation — message function is only called if the assertion fails:
+invariant(
+  items.length > 0,
+  () => `Expected at least one item, got ${items.length}`,
+  "Validation error"
+);
+```
+
+### Signature
+
+```typescript
+function invariant(
+  condition: unknown,
+  message?: string | (() => string),
+  prefix?: string
+): asserts condition
+```
+
+<ParamField path="condition" type="unknown" required>
+  The value or expression to assert. If falsy, an error is thrown.
+</ParamField>
+
+<ParamField path="message" type="string | (() => string)">
+  Error message, or a function that returns one. The function form avoids computing expensive messages when the assertion passes.
+</ParamField>
+
+<ParamField path="prefix" type="string" default="'Invariant violation'">
+  Prefix prepended to the message in the thrown error: `"Invariant violation: <message>"`.
+</ParamField>
+
+## casing
+
+Casing utilities for converting between common identifier formats. Exported as a single `casing` object with named methods.
+
+```typescript
+import { casing } from "@canonical/utils";
+
+casing.toPascalCase("my-component");  // "MyComponent"
+casing.toCamelCase("my-component");   // "myComponent"
+casing.toKebabCase("MyComponent");    // "my-component"
+casing.isPascalCase("MyComponent");   // true
+casing.isPascalCase("myComponent");   // false
+```
+
+<ParamField path="casing.toPascalCase" type="(s: string) => string">
+  Converts a string to PascalCase. Handles kebab-case, camelCase, snake_case, and space-separated input.
+</ParamField>
+
+<ParamField path="casing.toCamelCase" type="(s: string) => string">
+  Converts a string to camelCase.
+</ParamField>
+
+<ParamField path="casing.toKebabCase" type="(s: string) => string">
+  Converts a string to kebab-case.
+</ParamField>
+
+<ParamField path="casing.isPascalCase" type="(s: string) => boolean">
+  Returns `true` if the string is already in valid PascalCase.
+</ParamField>
+
+## humanizeNumber
+
+Formats a large number into a compact, human-readable string with a unit suffix.
+
+```typescript
+import { humanizeNumber } from "@canonical/utils";
+
+humanizeNumber(12345);   // { displayValue: "12k", value: 12345, unit: "k" }
+humanizeNumber(999999);  // { displayValue: "999k", value: 999999, unit: "k" }
+humanizeNumber(1_500_000); // { displayValue: "1.5M", value: 1500000, unit: "M" }
+
+// Custom units for binary prefixes:
+humanizeNumber(2048, {
+  units: ["", "Ki", "Mi", "Gi"],
+  magnitudeBase: 1024,
+}); // { displayValue: "2Ki", value: 2048, unit: "Ki" }
+```
+
+### Signature
+
+```typescript
+function humanizeNumber(
+  value: number,
+  options?: HumanizeNumberOptions
+): HumanizeResult
+```
+
+<ParamField path="value" type="number" required>
+  The number to format. Should be a finite, non-negative integer.
+</ParamField>
+
+<ParamField path="options.units" type="string[]" default="['', 'k', 'M', 'B', 'T']">
+  Unit suffixes, starting with the base unit. Override for binary prefixes (`['', 'Ki', 'Mi', 'Gi', 'Ti']`) or custom scales.
+</ParamField>
+
+<ParamField path="options.magnitudeBase" type="number" default="1000">
+  The divisor used when stepping between units. Use `1024` for binary prefixes.
+</ParamField>
+
+<ParamField path="options.overflowIndicator" type="string" default="'+'">
+  String appended when the value is truncated (e.g. `"999k+"` for values over 999,999).
+</ParamField>
+
+**Returns** a `HumanizeResult` object:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `displayValue` | `string` | Formatted string, e.g. `"12k"` |
+| `value` | `number` | Original numeric value |
+| `unit` | `string \| undefined` | The unit suffix that was applied |
+
+## pluralize
+
+Returns the singular or plural form of a word based on a count. Follows Django's `verbose_name` / `verbose_name_plural` pattern.
+
+```typescript
+import { pluralize } from "@canonical/utils";
+
+pluralize(1);                                      // "item"
+pluralize(2);                                      // "items"
+pluralize(1, { singular: "box", plural: "boxes" }); // "box"
+pluralize(3, { singular: "box", plural: "boxes" }); // "boxes"
+pluralize(1, { singular: "child", plural: "children" }); // "child"
+pluralize(2, { singular: "person" });              // "persons"
+```
+
+### Signature
+
+```typescript
+function pluralize(
+  count: number,
+  options?: PluralizeOptions
+): string
+```
+
+<ParamField path="count" type="number" required>
+  The count that determines singular vs. plural form.
+</ParamField>
+
+<ParamField path="options.singular" type="string" default="'item'">
+  The singular form of the word.
+</ParamField>
+
+<ParamField path="options.plural" type="string">
+  The plural form. When omitted, defaults to `singular + 's'`.
+</ParamField>
+
+## Navigation utilities
+
+Three utility functions for working with navigation tree data structures defined by `@canonical/ds-types`.
+
+### annotateTree
+
+Transforms a flat `Item` tree into an `_Item` tree annotated with `parentUrl` and `depth`. Useful for building sidebar navigation with active-state tracking.
+
+```typescript
+import { annotateTree } from "@canonical/utils";
+
+const tree = annotateTree(
+  { url: "/", label: "Home", items: [{ url: "/docs", label: "Docs" }] },
+  null,  // parentUrl for root
+  0      // depth for root
+);
+// tree.items[0].parentUrl === "/"
+// tree.items[0].depth === 1
+```
+
+### getItemId
+
+Returns the unique identifier for a navigation item — either its `url` or `key`. Throws if neither is present.
+
+```typescript
+import { getItemId } from "@canonical/utils";
+
+getItemId({ url: "/settings", label: "Settings" }); // "/settings"
+getItemId({ key: "divider", label: "---" });         // "divider"
+```
+
+### prepareIndex
+
+Creates a `Record<string, _Item>` index for O(1) lookup of annotated navigation items by URL or key. Call `annotateTree` first.
+
+```typescript
+import { annotateTree, prepareIndex } from "@canonical/utils";
+
+const tree = annotateTree(rootItem);
+const index = prepareIndex(tree);
+
+const docsItem = index["/docs"];
+console.log(docsItem.depth); // 1
+```
+
+## AllOrNone
+
+A utility type that requires either all properties of an object type to be present, or none of them. Useful for mutually dependent props.
+
+```typescript
+import type { AllOrNone } from "@canonical/utils";
+
+type CoordinateProps = AllOrNone<{ lat: number; lng: number }>;
+
+const a: CoordinateProps = { lat: 51.5, lng: -0.1 }; // OK
+const b: CoordinateProps = {};                          // OK
+const c: CoordinateProps = { lat: 51.5 };              // Error: lng missing
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="ds-types" icon="shield-check" href="/reference/ds-types">
+    TypeScript types used alongside utilities
+  </Card>
+  <Card title="react-ds-global" icon="cubes" href="/reference/react-ds-global">
+    Badge component uses humanizeNumber and pluralize internally
+  </Card>
+</CardGroup>

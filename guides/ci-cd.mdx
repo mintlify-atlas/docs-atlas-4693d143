@@ -1,0 +1,245 @@
+---
+title: 'CI/CD'
+description: 'Pragma's continuous integration and deployment pipeline: PR builds, Chromatic visual regression testing, and the release workflow.'
+keywords: ['CI', 'CD', 'GitHub Actions', 'Chromatic', 'Lerna', 'Nx', 'Vitest', 'build matrix']
+---
+
+Pragma's pipeline provides layered verification: build, check, test, and visual. Each layer catches a different class of problem, so when something fails you know what category to investigate.
+
+## Goals
+
+The pipeline is designed to achieve:
+
+- Correctness at every layer (compile, lint, test, visual)
+- Fast feedback while context is fresh
+- Confidence that a passing `main` branch is publishable
+- Reproducibility between local and CI environments
+- Visual stability through Chromatic baselines
+
+## Verification layers
+
+| Layer | Tool | What it catches |
+|-------|------|----------------|
+| **Build** | TypeScript, `copyfiles` | Syntax errors, missing imports, type errors that prevent compilation |
+| **Check** | Biome, TypeScript `--noEmit`, webarchitect | Formatting violations, type errors, architectural rule violations |
+| **Test** | Vitest | Behaviour regressions, SSR failures |
+| **Visual** | Chromatic | Components that pass tests but render incorrectly |
+
+## Prerequisites
+
+### Repository secrets
+
+| Secret | Purpose |
+|--------|---------|
+| `NODE_AUTH_TOKEN` | npm Granular Access Token with publish permission for `@canonical` scope |
+| `CHROMATIC_TOKEN_DS_GLOBAL` | Chromatic project token for `ds-global` |
+| `CHROMATIC_TOKEN_DS_APP` | Chromatic project token for `ds-app` |
+| `CHROMATIC_TOKEN_DS_APP_LAUNCHPAD` | Chromatic project token for `ds-app-launchpad` |
+
+### Repository settings
+
+- Branch protection requiring `build-gate` as a required status check
+- Actions permissions enabled for creating tags and pushing version commits
+
+## Tooling
+
+**Lerna** manages versioning and publishing. It understands the monorepo structure, tracks which packages changed since the last release, generates changelogs from conventional commits, and publishes packages to npm in dependency order.
+
+**Nx** provides task orchestration and caching. It determines the build order from the dependency graph and skips packages whose inputs have not changed. The `setup-env` action persists the Nx cache across CI runs using `actions/cache`.
+
+**Bun** handles package management. It resolves workspace dependencies and installs packages. In CI, `bun install` runs with `--ignore-scripts` to prevent the `prepare` lifecycle hook from triggering a full build. Workflows that need a build invoke it explicitly.
+
+**Node.js** runs Storybook and Lerna. The pipeline installs both Bun and Node, using Bun for package management and Node for tools that require fuller Node.js compatibility.
+
+**Chromatic** provides visual regression testing. It runs as a separate workflow with path filtering so changes to one package only trigger visual tests for that package.
+
+## Caching
+
+The `setup-env` composite action caches three things across jobs and runs:
+
+| Cache | Key | Benefit |
+|-------|-----|---------|
+| `node_modules/` | `bun.lock` hash + Node version | Eliminates redundant dependency downloads |
+| `~/.bun/install/cache/` | Bun version | Speeds up `bun install` even on cache misses |
+| `.nx/cache/` | Nx computation inputs | Allows Nx to skip rebuilding packages whose inputs have not changed |
+
+<Note>
+  Locally, `bun install` triggers the `prepare` hook and builds the workspace automatically. In CI this divergence is intentional: local development prioritises convenience while CI prioritises explicit, cacheable steps.
+</Note>
+
+## Workflows
+
+### PR workflow (`pr.yml`)
+
+Runs on every pull request. It uses a build matrix to test against multiple Node versions:
+
+```yaml
+strategy:
+  matrix:
+    bun-version: ['1.3.6']
+    node-version: ['22', '24']
+```
+
+Node 22 is the current LTS; Node 24 is the current release. Testing against both catches compatibility issues before they reach `main`.
+
+Each matrix job performs three steps in sequence:
+
+1. `lerna run build:all` — builds all packages and their Storybook configurations
+2. `bun run check` — runs Biome, TypeScript, and webarchitect checks
+3. `bun run test` — runs Vitest for all packages
+
+A separate `build-gate` job waits for all matrix combinations to complete. `build-gate` is the required status check for branch protection — PRs cannot merge until every combination passes.
+
+### Release workflow (`tag.yml`)
+
+Runs manually from GitHub Actions. Only works from the main branch.
+
+The workflow accepts a release type input: `experimental`, `alpha`, `beta`, `rc`, or `stable`. This determines how Lerna bumps the version. See [Versioning & Releases](/guides/versioning) for the full version bump rules.
+
+The workflow has three jobs:
+
+<Steps>
+  <Step title="build">
+    Runs checks and tests to verify the release candidate. Identical to the PR workflow's matrix jobs.
+  </Step>
+
+  <Step title="version">
+    Uses Lerna's conventional commit analysis to determine the version bump.
+
+    - Bumps version numbers in all `package.json` files and `lerna.json`
+    - Generates or updates `CHANGELOG.md` files from conventional commits
+    - Commits the version changes
+    - Creates a git tag (e.g. `v0.12.0`)
+    - Pushes the commit and tag to the repository
+  </Step>
+
+  <Step title="publish">
+    Checks out the tagged commit, builds all packages, and publishes them to npm.
+
+    If publishing fails partway through, see [Troubleshooting: NPM publish fails](#troubleshooting) below.
+  </Step>
+</Steps>
+
+### Chromatic workflows
+
+Each Storybook package has a dedicated Chromatic workflow. These workflows use path filtering to run only when relevant files change.
+
+```yaml
+on:
+  pull_request:
+    paths:
+      - configs/storybook/**
+      - packages/styles/**
+      - packages/react/ds-global/**
+```
+
+The path list includes both the package and its dependencies. Changes to `styles` packages trigger Chromatic for all component packages because style changes affect visual output.
+
+All Chromatic workflows extend a shared template at `.github/workflows/chromatic._template.yml`. Each package workflow passes its working directory and external dependencies to the template.
+
+<Info>
+  Chromatic workflows are focused solely on visual baselines — they do not run code quality checks or tests. Correctness is owned by `pr.yml` on PRs and `push.yml` on main.
+</Info>
+
+**Review behaviour:**
+
+- **On pull requests** — Chromatic requires manual approval for visual changes. Reviewers see a side-by-side comparison with highlighted differences in Chromatic's web interface.
+- **On pushes to main** — visual changes are automatically accepted as new baselines, keeping baselines current after merge.
+
+## How to release
+
+Releases require write access to the repository and must run from the main branch.
+
+<Steps>
+  <Step title="Verify prerequisites">
+    - You are on the main branch with no uncommitted changes
+    - The latest CI build on main passed
+    - You have determined the appropriate release type
+  </Step>
+
+  <Step title="Trigger the release">
+    1. Navigate to **Actions** in the GitHub repository
+    2. Select **"Update package versions"** from the workflow list
+    3. Click **Run workflow**
+    4. Select the release type from the dropdown
+    5. Click **Run workflow** to start
+
+    The workflow takes approximately 5–10 minutes.
+  </Step>
+
+  <Step title="Verify the release">
+    When the workflow completes, verify:
+    - The git tag appears in the repository's tag list
+    - Packages appear on npm with the correct version
+    - `CHANGELOG.md` files contain the expected entries
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Build fails in CI but works locally">
+    This usually indicates an environment difference. Check which Node version the failing job used and compare against your local version:
+
+    ```bash
+    node --version
+    ```
+
+    Clear local caches and rebuild from scratch:
+
+    ```bash
+    bun run special:clean
+    bun install
+    bun run build
+    bun run check
+    bun run test
+    ```
+
+    If the failure involves Nx caching, re-running the workflow usually resolves it. The Nx cache can be busted by pushing a trivial change, since the cache key includes `github.sha`.
+  </Accordion>
+
+  <Accordion title="Chromatic shows unexpected visual changes">
+    Review the visual diff in Chromatic's web interface. Each changed story shows a side-by-side comparison with highlighted differences.
+
+    - **If the changes are intentional** — accept them in Chromatic to create new baselines.
+    - **If the changes are unintentional** — investigate the cause. Common sources include font rendering differences between environments, timing-dependent animations captured at different frames, or CSS changes in shared style packages.
+
+    For font issues, ensure Storybook loads fonts consistently. For animation issues, consider disabling animations in Storybook's test mode or using Chromatic's delay options.
+  </Accordion>
+
+  <Accordion title="NPM publish fails with 'version already exists'">
+    This happens when a previous release attempt partially succeeded — the git tag was created but publishing failed partway through.
+
+    To recover:
+
+    1. Delete the git tag locally and remotely:
+       ```bash
+       git tag -d v0.12.0
+       git push origin :refs/tags/v0.12.0
+       ```
+
+    2. Reset the version commits:
+       ```bash
+       git reset --hard HEAD~1
+       git push --force-with-lease
+       ```
+
+    3. Identify which packages did publish and manually bump their versions in `package.json` to avoid conflicts.
+
+    4. Re-run the release workflow.
+
+    For partial publish failures, you can publish remaining packages manually:
+    ```bash
+    lerna publish from-package --yes --no-private
+    ```
+  </Accordion>
+
+  <Accordion title="Workflow cannot find secrets">
+    Workflows require repository secrets for npm publishing (`NODE_AUTH_TOKEN`) and Chromatic (`CHROMATIC_TOKEN_*`). If secrets are missing or expired:
+
+    - **npm**: Generate a new Granular Access Token at npmjs.com with publish permissions for the `@canonical` scope. Add it as `NODE_AUTH_TOKEN` in repository secrets.
+    - **Chromatic**: Get the project token from Chromatic's project settings. Add it as the appropriate `CHROMATIC_TOKEN_*` secret.
+
+    Secrets are only available to workflows running in the repository context, not from forks. Pull requests from forks will not have access to secrets.
+  </Accordion>
+</AccordionGroup>

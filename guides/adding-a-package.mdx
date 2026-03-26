@@ -1,0 +1,349 @@
+---
+title: 'Adding a Package'
+description: 'When to create a new package, where it belongs in the monorepo, and how to configure it correctly.'
+keywords: ['package', 'monorepo', 'library', 'tool', 'webarchitect', 'lerna']
+---
+
+This guide explains when to create a new package, where it lives in the repository, and the configuration every package requires.
+
+## When to create a new package
+
+Not every piece of functionality deserves its own package. The overhead of separate configuration, versioning, and maintenance means new packages should earn their existence.
+
+**Create a new package when:**
+- The functionality has consumers beyond a single application
+- It represents a coherent unit that could be versioned independently
+- It belongs to a different architectural layer than existing packages
+
+**Extend an existing package when:**
+- The functionality is specific to one consumer
+- It depends heavily on the internals of an existing package
+- Splitting it would create circular dependencies
+
+For example, the `@canonical/utils` package grows when new utilities prove useful across multiple packages. Adding a function there is simpler than creating a new package for it alone.
+
+## Package locations
+
+The directory a package lives in determines how consumers import it and influences CI path filtering.
+
+| Location | Contents |
+|----------|----------|
+| `packages/` | Core infrastructure: `ds-types`, `ds-assets`, `utils`, `webarchitect`, and developer tools |
+| `packages/react/` | React component packages: `ds-global`, `ds-app`, and domain-specific packages |
+| `packages/styles/` | CSS layers: `primitives/canonical` for tokens, `elements` for base HTML, `modes/*` for theming |
+| `packages/storybook/` | Storybook addons extending Storybook with project-specific functionality |
+
+Developer tools (CLI utilities, generators) belong at the top `packages/` level alongside `webarchitect` and `generator-ds`.
+
+## Webarchitect rulesets
+
+Every package must declare a webarchitect ruleset in its `check:webarchitect` script. Webarchitect validates license requirements, export structure, and required configuration.
+
+<AccordionGroup>
+  <Accordion title="library — LGPL-3.0">
+    Applies to packages consumed by other packages or applications. Libraries must have a build step that produces distributable JavaScript and type definitions. Most packages in the monorepo use this ruleset.
+
+    ```json
+    "check:webarchitect": "webarchitect library"
+    ```
+
+    License: `LGPL-3.0` — permits consumption without requiring consumers to open-source their applications.
+  </Accordion>
+
+  <Accordion title="tool — GPL-3.0">
+    Applies to compiled CLI tools and applications. Tools use the stricter GPL-3.0 license and produce executable artifacts. The ruleset expects the same build infrastructure as `library`.
+
+    ```json
+    "check:webarchitect": "webarchitect tool"
+    ```
+
+    License: `GPL-3.0`.
+  </Accordion>
+
+  <Accordion title="tool-ts — TypeScript source, no build">
+    Applies to TypeScript-only tools that run directly with Bun without a compilation step. These packages point `module` and `types` at TypeScript source files rather than compiled output. The `webarchitect` package itself uses this ruleset.
+
+    ```json
+    "check:webarchitect": "webarchitect tool-ts"
+    ```
+
+    The `module` and `types` fields in `package.json` point to `src/index.ts`. The `files` array includes `src` instead of `dist`.
+  </Accordion>
+</AccordionGroup>
+
+## Creating a library package
+
+Library packages are the most common type. The steps below walk through creating a new utility library.
+
+<Steps>
+  <Step title="Create the directory">
+    Create the package directory in the appropriate location. For a utility library at the top level:
+
+    ```bash
+    mkdir -p packages/my-utils/src
+    ```
+  </Step>
+
+  <Step title="Create package.json">
+    The `package.json` defines the package identity, exports, scripts, and dependencies.
+
+    ```json
+    {
+      "name": "@canonical/my-utils",
+      "description": "Utility functions for specific domain",
+      "version": "0.11.0",
+      "type": "module",
+      "module": "dist/esm/index.js",
+      "types": "dist/types/index.d.ts",
+      "files": ["dist"],
+      "author": {
+        "email": "webteam@canonical.com",
+        "name": "Canonical Webteam"
+      },
+      "exports": {
+        ".": {
+          "import": "./dist/esm/index.js",
+          "types": "./dist/types/index.d.ts",
+          "default": "./dist/esm/index.js"
+        }
+      },
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/canonical/pragma"
+      },
+      "license": "LGPL-3.0",
+      "bugs": {
+        "url": "https://github.com/canonical/pragma/issues"
+      },
+      "homepage": "https://github.com/canonical/pragma#readme",
+      "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "build:all": "tsc -p tsconfig.build.json",
+        "check": "bun run check:biome && bun run check:webarchitect",
+        "check:webarchitect": "webarchitect library",
+        "check:fix": "bun run check:biome:fix && bun run check:ts",
+        "check:biome": "biome check",
+        "check:biome:fix": "biome check --write",
+        "check:ts": "tsc --noEmit",
+        "test": "bun run test:vitest",
+        "test:vitest": "vitest run",
+        "test:vitest:watch": "vitest"
+      },
+      "devDependencies": {
+        "@biomejs/biome": "2.4.5",
+        "@canonical/biome-config": "^0.11.0",
+        "@canonical/typescript-config": "^0.11.0",
+        "@canonical/webarchitect": "^0.11.0",
+        "typescript": "^5.9.3",
+        "vite": "^7.3.1",
+        "vitest": "^4.0.17"
+      }
+    }
+    ```
+
+    The `version` should match the current monorepo version. Lerna's fixed versioning keeps all packages in sync.
+
+    The `files` array limits what gets published to npm — including only `dist` keeps source files and configuration out of the published package.
+  </Step>
+
+  <Step title="Create TypeScript configuration">
+    Two `tsconfig` files serve different purposes: the base config for the editor and type checking, and the build config for compilation.
+
+    `tsconfig.json`:
+
+    ```json
+    {
+      "extends": "@canonical/typescript-config",
+      "compilerOptions": {
+        "baseUrl": "src",
+        "types": ["node", "vitest/globals"]
+      },
+      "include": ["src/**/*.ts", "vite.config.ts", "vitest.config.ts"],
+      "exclude": ["src/**/*.test.ts"]
+    }
+    ```
+
+    `tsconfig.build.json`:
+
+    ```json
+    {
+      "extends": "./tsconfig.json",
+      "compilerOptions": {
+        "rootDir": "src",
+        "outDir": "dist/esm",
+        "declaration": true,
+        "declarationDir": "dist/types",
+        "declarationMap": true,
+        "sourceMap": true,
+        "types": ["node"]
+      },
+      "include": ["src/**/*.ts"],
+      "exclude": ["src/**/*.tests.ts", "vite.config.ts", "vitest.config.ts"]
+    }
+    ```
+
+    <Note>
+      For React component packages, extend `@canonical/typescript-config-react` instead of `@canonical/typescript-config`. The React config includes JSX settings and React-specific type definitions.
+    </Note>
+  </Step>
+
+  <Step title="Create Biome configuration">
+    Biome handles linting and formatting. Create `biome.json`:
+
+    ```json
+    {
+      "extends": ["@canonical/biome-config"],
+      "files": {
+        "includes": ["**/src/**", "**/*.json"]
+      }
+    }
+    ```
+
+    The shared config defines formatting rules and lint checks. The `includes` pattern focuses checks on source files and JSON configuration.
+  </Step>
+
+  <Step title="Create test configuration">
+    Create `vite.config.ts`:
+
+    ```typescript
+    import { defineConfig } from "vite";
+
+    export default defineConfig({});
+    ```
+
+    Create `vitest.config.ts`:
+
+    ```typescript
+    import { defineConfig, mergeConfig } from "vitest/config";
+    import viteConfig from "./vite.config.js";
+
+    export default mergeConfig(
+      viteConfig,
+      defineConfig({
+        test: {
+          projects: [
+            {
+              test: {
+                name: "client",
+                globals: true,
+                include: ["src/**/*.tests.ts"],
+              },
+            },
+          ],
+        },
+      }),
+    );
+    ```
+
+    Vitest merges with Vite configuration for module resolution. `globals: true` makes `describe`, `it`, and `expect` available without imports.
+  </Step>
+
+  <Step title="Create initial source files">
+    Create `src/index.ts` as the package entry point:
+
+    ```typescript
+    export { myFunction } from "./myFunction.js";
+    export type { MyFunctionOptions } from "./types.js";
+    ```
+
+    Use named exports rather than default exports to enable precise tree-shaking. Include the `.js` extension because the compiled output uses JavaScript file extensions.
+  </Step>
+
+  <Step title="Install dependencies">
+    Run `bun install` from the monorepo root to link the new package into the workspace:
+
+    ```bash
+    bun install
+    ```
+
+    Bun resolves workspace dependencies and creates symlinks for local packages. After installation, other packages can depend on the new package using its scoped name.
+  </Step>
+
+  <Step title="Validate configuration">
+    Run webarchitect to verify the package configuration:
+
+    ```bash
+    bun run check:webarchitect
+    ```
+
+    Webarchitect validates the `package.json` structure, license declaration, export configuration, and required scripts. Fix any validation errors before committing.
+  </Step>
+</Steps>
+
+## React component packages
+
+React component packages require additional scripts for CSS handling and Storybook. The key differences in `package.json`:
+
+```json
+{
+  "scripts": {
+    "build": "bun run build:package",
+    "build:all": "bun run build:package && bun run build:storybook",
+    "build:storybook": "storybook build",
+    "build:package": "bun run build:package:tsc && bun run build:package:copycss",
+    "build:package:copycss": "copyfiles -u 1 'src/ui/{,**/}*.css' dist/esm",
+    "build:package:tsc": "tsc -p tsconfig.build.json",
+    "storybook": "storybook dev -p 6006 --no-open --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@canonical/styles": "^0.11.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@canonical/typescript-config-react": "^0.11.0",
+    "storybook": "^10.1.11",
+    "copyfiles": "^2.4.1"
+  }
+}
+```
+
+The `build:package:copycss` script copies CSS files to `dist/esm` because TypeScript compilation does not handle CSS. The pattern `src/ui/{,**/}*.css` matches component CSS in all subdirectories.
+
+For Storybook configuration, copy the `.storybook/` directory from an existing component package and modify it. The shared `@canonical/storybook-config` package provides the base configuration factory.
+
+<Tip>
+  If your React component package has a Storybook, create a Chromatic workflow for visual regression testing. Copy `.github/workflows/chromatic._template.yml` and adjust the path filters to match your package and its dependencies. See [CI/CD](/guides/ci-cd) for details.
+</Tip>
+
+## CI integration
+
+New packages integrate into CI automatically through Lerna. The PR workflow runs `lerna run build:all`, `bun run check`, and `bun run test` across all packages — no manual CI configuration is needed for basic library or tool packages.
+
+Packages with `"private": true` in `package.json` are excluded from npm publishing but still participate in builds and tests.
+
+<Warning>
+  If your PR introduces a brand-new npm package, the first publish must be done manually. From inside the package directory, run `npm publish --access public`. After publishing, run `bun run publish:status` from the repository root to confirm the package appears in the registry.
+</Warning>
+
+## Pre-commit checklist
+
+<AccordionGroup>
+  <Accordion title="Configuration completeness">
+    - `package.json` exists with `name`, `version`, `license`, `exports`, and `scripts`
+    - `tsconfig.json` extends the appropriate base configuration
+    - `tsconfig.build.json` configures compilation output
+    - `biome.json` extends `@canonical/biome-config`
+    - `vitest.config.ts` configures the test runner
+    - `src/index.ts` exports the public API
+  </Accordion>
+
+  <Accordion title="Validation">
+    - `bun install` succeeds from the monorepo root
+    - `bun run build` succeeds in the package directory
+    - `bun run check` passes (includes webarchitect validation)
+    - `bun run test` passes (or no tests exist yet)
+  </Accordion>
+
+  <Accordion title="Documentation">
+    - `README.md` exists with package description and usage
+    - Export names are descriptive and documented in types
+  </Accordion>
+
+  <Accordion title="Integration">
+    - Version matches current monorepo version
+    - License matches ruleset requirements (`LGPL-3.0` for library, `GPL-3.0` for tool)
+    - `check:webarchitect` script uses the correct ruleset
+    - First-time publish completed manually for new public packages
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,228 @@
+---
+title: "Modes packages"
+description: "Colour modes, density variants, intent modifiers, and motion preferences — the styles-modes-* family of packages."
+sidebarTitle: "styles-modes"
+---
+
+Pragma's mode packages apply contextual CSS classes that alter the visual presentation of components without changing their markup. Each package is responsible for one dimension of variation: colour theme, layout density, intent colour mapping, or motion preferences.
+
+<Tip>
+  If you import `@canonical/styles`, all mode packages are included automatically. Install these packages individually only when you need granular control.
+</Tip>
+
+## Package overview
+
+| Package | Purpose |
+|---------|----------|
+| `@canonical/styles-modes-canonical` | Canonical colour theme (light/dark) |
+| `@canonical/styles-modes-density` | Layout density — compact and comfortable |
+| `@canonical/styles-modes-intents` | Intent modifier colours — positive, negative, caution |
+| `@canonical/styles-modes-motion` | Motion and animation preferences |
+
+---
+
+## styles-modes-canonical
+
+Applies Canonical's brand colour theme. Activates light or dark mode based on a CSS class on a container element (or the `<html>` element for global theming).
+
+### Installation
+
+```bash
+bun add @canonical/styles-modes-canonical
+```
+
+### Usage
+
+```css
+@import url("@canonical/styles-modes-canonical");
+```
+
+```typescript
+import "@canonical/styles-modes-canonical";
+```
+
+### Class names
+
+| Class | Effect |
+|-------|--------|
+| `.is-light` | Forces light theme on the element and its children |
+| `.is-dark` | Forces dark theme on the element and its children |
+| _(none)_ | Follows the user's `prefers-color-scheme` media query |
+
+```html
+<!-- Force dark theme on a specific panel -->
+<div class="is-dark">
+  <Button importance="primary">Save</Button>
+</div>
+
+<!-- Global light theme -->
+<html class="is-light">
+```
+
+### What it controls
+
+- Background and surface colours
+- Text and icon colours
+- Border colours
+- Focus ring colours
+
+---
+
+## styles-modes-density
+
+Provides layout density variants. Use `compact` for data-heavy dashboards, `comfortable` (default) for content pages.
+
+### Installation
+
+```bash
+bun add @canonical/styles-modes-density
+```
+
+### Usage
+
+```css
+@import url("@canonical/styles-modes-density");
+```
+
+### Class names
+
+| Class | Effect |
+|-------|--------|
+| `.is-dense` | Reduces padding and spacing throughout |
+| `.is-comfortable` | Default spacing (equivalent to no class) |
+
+```html
+<table class="is-dense">
+  <!-- Tighter rows for data tables -->
+</table>
+```
+
+### What it controls
+
+- Component padding and margin
+- Row heights in tables and lists
+- Gap between stacked elements
+
+---
+
+## styles-modes-intents
+
+Maps semantic intent values (`positive`, `negative`, `caution`, `information`) to colour tokens. This package allows components to express intent through CSS classes rather than inline styles.
+
+### Installation
+
+```bash
+bun add @canonical/styles-modes-intents
+```
+
+### Usage
+
+```css
+@import url("@canonical/styles-modes-intents");
+```
+
+### Class names
+
+The intent classes correspond to the `severity` modifier family values from `@canonical/ds-types`:
+
+| Class | Maps to |
+|-------|---------|
+| `.positive` | Success/constructive colour |
+| `.negative` | Error/destructive colour |
+| `.caution` | Warning colour |
+| `.information` | Informational colour |
+| `.neutral` | Resets to default colours |
+
+```tsx
+// These classes are applied automatically by components:
+<Badge value={5} severity="negative" />
+// Renders as: <span class="ds badge negative">5</span>
+```
+
+### What it controls
+
+- Text and icon colours for intent-carrying elements
+- Background tints on status indicators
+- Border colours for highlighted states
+
+---
+
+## styles-modes-motion
+
+Controls animation and transition behaviour. By default, Pragma components include transitions for interactive states. This package lets you reduce or disable motion for accessibility or performance.
+
+### Installation
+
+```bash
+bun add @canonical/styles-modes-motion
+```
+
+### Usage
+
+```css
+@import url("@canonical/styles-modes-motion");
+```
+
+### Class names
+
+| Class | Effect |
+|-------|--------|
+| `.reduce-motion` | Disables non-essential animations |
+| `.no-motion` | Removes all transitions and animations |
+| _(none)_ | Full animations; respects `prefers-reduced-motion` |
+
+```html
+<!-- Disable animations for a specific component tree -->
+<div class="reduce-motion">
+  <Accordion>...</Accordion>
+</div>
+```
+
+<Note>
+  When no class is applied, the mode package automatically respects the user's `prefers-reduced-motion: reduce` media query. You only need to add a class if you want to override this behaviour programmatically.
+</Note>
+
+### What it controls
+
+- CSS `transition` on interactive state changes
+- CSS `animation` on loading indicators and spinners
+- Transform-based entrance animations
+
+---
+
+## Using multiple modes together
+
+Modes compose via class stacking. Apply classes at whatever scope makes sense for your layout:
+
+```html
+<html class="is-dark">
+  <body>
+    <!-- Compact table inside a dark-themed app -->
+    <section class="is-dense">
+      <table>...</table>
+    </section>
+
+    <!-- Highlighted card with positive intent -->
+    <div class="positive">
+      <Card emphasis="highlighted">...</Card>
+    </div>
+  </body>
+</html>
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Styles overview" icon="palette" href="/styles/overview">
+    How mode packages fit into the CSS architecture
+  </Card>
+  <Card title="Modes guide" icon="sliders" href="/styles/modes">
+    Conceptual guide to colour modes and theming
+  </Card>
+  <Card title="ds-types" icon="shield-check" href="/reference/ds-types">
+    Modifier families that map to intent class names
+  </Card>
+  <Card title="@canonical/styles" icon="layer-group" href="/reference/styles">
+    Aggregator that includes all modes automatically
+  </Card>
+</CardGroup>

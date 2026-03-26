@@ -1,0 +1,184 @@
+---
+title: "Webarchitect"
+description: "Architecture validation CLI that enforces package standards using JSON Schema rulesets."
+keywords: ["webarchitect", "architecture", "validation", "rulesets", "package", "lint"]
+---
+
+Webarchitect validates that packages conform to organizational standards. Rather than relying on documentation that can drift out of sync, it uses JSON Schema rulesets to enforce `package.json` structure, TypeScript configuration, Biome setup, and license compliance as part of every check run.
+
+Every package in the monorepo runs `bun run check:webarchitect` as part of its `check` script. Validation failures produce specific error messages explaining what was expected and what was found.
+
+## Installation
+
+<Steps>
+  <Step title="Install the package">
+    Add `@canonical/webarchitect` as a dev dependency:
+
+    ```bash
+    bun add --dev @canonical/webarchitect
+    ```
+
+    Or install globally to use across projects:
+
+    ```bash
+    bun add -g @canonical/webarchitect
+    ```
+  </Step>
+
+  <Step title="Add a check script">
+    Add the appropriate ruleset invocation to your `package.json` scripts:
+
+    ```json
+    {
+      "scripts": {
+        "check:webarchitect": "webarchitect library"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Run validation">
+    Run the check from the package root directory (the directory containing your `package.json`):
+
+    ```bash
+    bun run check:webarchitect
+    ```
+  </Step>
+</Steps>
+
+## Rulesets
+
+Pragma uses four rulesets. Each one targets a different kind of package and validates the configuration appropriate for that context.
+
+| Ruleset | License | Use case |
+|---------|---------|----------|
+| `library` | LGPL-3.0 | Reusable packages distributed to npm with compiled output |
+| `tool` | GPL-3.0 | Compiled CLI tools with a build step |
+| `tool-ts` | GPL-3.0 | TypeScript tools that run directly with Bun — no build step |
+| `assets` | LGPL-3.0 | Asset packages (design tokens, fonts) with no build scripts |
+
+Rulesets follow an inheritance model. `library` and `tool` both extend `package`, which extends `base`. Running `webarchitect library` therefore runs all three layers of rules.
+
+### library
+
+For packages consumed by other packages or applications and distributed to npm. Enforces LGPL-3.0 licensing and the compiled output structure (`dist/esm/index.js`).
+
+**Validates:**
+- `package.json` fields: `name`, `version`, `type: "module"`, `module`, `types`, `files`, `scripts`
+- `module` resolves to `dist/esm/index.js`
+- `types` resolves to `dist/types/index.d.ts`
+- `files` array includes `"dist"`
+- Scripts include `build`, `test`, and `check:ts` (must be `tsc --noEmit`)
+- `biome.json` extends `@canonical/biome-config`
+- `license` is `LGPL-3.0`
+
+### tool
+
+For CLI tools that have a build step producing compiled output. Enforces GPL-3.0 licensing.
+
+**Validates:** Same as `library` but requires `license: "GPL-3.0"`.
+
+### tool-ts
+
+For TypeScript tools that run directly from source using Bun, with no build step. The entry point is `src/index.ts` rather than a `dist/` path.
+
+**Validates:**
+- `package.json` `name` follows the `@canonical/` scope pattern
+- `module` and `types` both resolve to `src/index.ts`
+- `files` array includes `"src"`
+- Scripts include `build`, `test`, and `check:ts` (must be `tsc --noEmit`)
+- `biome.json` extends `@canonical/biome-config` with no extra properties
+- `license` is `GPL-3.0`
+
+<Note>
+  Webarchitect itself uses the `tool-ts` ruleset. Its own `check:webarchitect` script runs `bun run src/cli.ts tool-ts`, validating that it meets the standard it enforces for others.
+</Note>
+
+## What gets checked
+
+Here is a concrete example. When the `library` ruleset validates a package's `biome.json`, it checks that the file extends `@canonical/biome-config` and contains no unexpected additional properties:
+
+```json
+{
+  "extends": ["@canonical/biome-config"],
+  "files": {
+    "includes": ["src", "*.json"]
+  }
+}
+```
+
+And the corresponding `package.json` check script entry that kicks off validation:
+
+```json
+{
+  "scripts": {
+    "check:webarchitect": "webarchitect library"
+  }
+}
+```
+
+Running `bun run check:webarchitect` from that package validates the structure, scripts, configuration files, and license in one pass.
+
+## CLI reference
+
+```bash
+webarchitect <ruleset> [options]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--verbose` | Show files being checked, rules applied, and content found |
+| `--json` | Output results as JSON for CI/CD or programmatic consumption |
+| `--list` | List all available rulesets (bundled and local) |
+| `--help` | Show usage information |
+
+Webarchitect returns exit code `0` when all validations pass and `1` when any validation fails, making it easy to integrate into CI pipelines.
+
+### Ruleset resolution order
+
+When you specify a ruleset name, webarchitect resolves it in this order:
+
+1. A local file in the current directory (e.g., `my-rules.json`)
+2. The bundled built-in rulesets (`library`, `tool`, `tool-ts`, `assets`, `package`, `base`)
+3. A remote URL starting with `http://` or `https://` pointing to a `.json` file
+
+## Creating custom rulesets
+
+Custom rulesets use standard JSON Schema. Webarchitect first validates your ruleset definition against its own mother schema, then uses your rules to validate project files.
+
+Rulesets can extend built-in ones using the `extends` array:
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/canonical/pragma/refs/heads/main/packages/webarchitect/src/schema.json",
+  "name": "my-ruleset",
+  "extends": ["library"],
+  "custom-rule": {
+    "file": {
+      "name": "package.json",
+      "contains": {
+        "type": "object",
+        "properties": {
+          "myField": { "type": "string" }
+        },
+        "required": ["myField"]
+      }
+    }
+  }
+}
+```
+
+Place the file in the package directory and reference it by name: `webarchitect my-ruleset`.
+
+## Rulesets as executable documentation
+
+The ruleset files in the `rulesets/` directory serve dual purposes: they enforce standards at runtime and document what valid structure looks like. Reading `library.ruleset.json` tells you exactly what a correctly configured library package must contain — the same information the tool checks. There is no gap between the spec and the check.
+
+<CardGroup cols={2}>
+  <Card title="Generators & Scaffolding" icon="wand-magic-sparkles" href="/tooling/generators">
+    Scaffold new packages and components that already conform to these standards.
+  </Card>
+  <Card title="Adding a package" icon="package" href="/guides/adding-a-package">
+    Step-by-step guide for creating new packages in the monorepo.
+  </Card>
+</CardGroup>

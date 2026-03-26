@@ -1,0 +1,184 @@
+---
+title: 'Versioning & Releases'
+description: 'Conventional Commits format, version bump rules, pre-release types, and the release workflow for Pragma packages.'
+keywords: ['versioning', 'conventional commits', 'lerna', 'release', 'changelog', 'semver']
+---
+
+Pragma uses [Conventional Commits](https://www.conventionalcommits.org/) to generate changelogs and determine version bumps automatically. All packages share a single version number managed by Lerna. This guide explains how to write commit messages and how the release process works.
+
+## Commit message format
+
+Every commit message follows the Conventional Commits specification:
+
+```
+type(scope): description
+
+[optional body]
+
+[optional footer]
+```
+
+The first line should be concise, ideally under 72 characters. The body provides additional context when needed. The footer contains metadata such as breaking change notices or issue references.
+
+Examples from the Pragma repository:
+
+```
+feat(monorepo): Webarchitect consumption (#378)
+fix(assets): Update SVG icons to use currentColor for fill attribute (#375)
+chore(deps): update dependencies (#382)
+docs(cicd): update npm token docs per recent npm security changes (#373)
+```
+
+## Commit types
+
+The type determines whether a commit triggers a version bump and what kind.
+
+| Type | Version bump | When to use |
+|------|-------------|-------------|
+| `feat` | Minor (0.11.0 → 0.12.0) | New component, new API method, new configuration option |
+| `fix` | Patch (0.11.0 → 0.11.1) | Bug fix, corrected type definition, edge case resolution |
+| `chore` | None | Dependency updates, build configuration, internal refactoring consumers never see |
+| `docs` | None | README updates, inline comment improvements, guide additions |
+| `refactor` | None | Code restructuring that neither fixes bugs nor adds features |
+| `test` | None | New test cases, flaky test fixes, test infrastructure improvements |
+| `ci` | None | Workflow changes, action updates, CI environment configuration |
+
+## Scopes
+
+Scopes are optional but recommended for clarity. Use lowercase with hyphens for multi-word scopes.
+
+<AccordionGroup>
+  <Accordion title="Package scopes">
+    Reference a specific package:
+
+    | Scope | Package |
+    |-------|--------|
+    | `assets` | `@canonical/ds-assets` |
+    | `utils` | `@canonical/utils` |
+    | `ds-types` | `@canonical/ds-types` |
+    | `webarchitect` | `@canonical/webarchitect` |
+    | `ds-global` | `@canonical/react-ds-global` |
+  </Accordion>
+
+  <Accordion title="Area scopes">
+    Reference a broader concern rather than a specific package:
+
+    | Scope | Meaning |
+    |-------|--------|
+    | `monorepo` | Changes affecting the overall repository structure |
+    | `deps` | Dependency updates |
+    | `cicd` | CI/CD configuration |
+  </Accordion>
+
+  <Accordion title="Component scopes">
+    Reference a specific component:
+
+    ```
+    fix(Button): correct focus ring in high-contrast mode
+    feat(Card): add horizontal layout variant
+    ```
+  </Accordion>
+</AccordionGroup>
+
+When a commit affects multiple packages or areas, either omit the scope or use `monorepo`.
+
+## Breaking changes
+
+Breaking changes alter the public API in ways that require consumers to update their code. They trigger a major version bump (0.11.0 → 1.0.0).
+
+**Using the footer:**
+
+```
+feat(ds-global): rename Button appearance prop to emphasis
+
+BREAKING CHANGE: The `appearance` prop on Button has been renamed to `emphasis`.
+Update your code: <Button appearance="primary"> becomes <Button emphasis="primary">
+```
+
+**Using the `!` shorthand:**
+
+```
+feat!(ds-global): rename Button appearance prop to emphasis
+```
+
+<Warning>
+  During the pre-1.0.0 phase, the release workflow protects against unexpected major version bumps. If a breaking change is detected during a pre-release, the workflow will fail. This protection is removed after the 1.0.0 stable release.
+</Warning>
+
+## Pre-release types
+
+Pre-releases allow testing new versions before declaring them stable. Each type indicates a different level of readiness.
+
+| Type | Stability | Version example | Description |
+|------|-----------|-----------------|-------------|
+| `experimental` | Lowest | `0.12.0-experimental.0` | Early development; API may change significantly between releases. Use for internal testing of major new features. |
+| `alpha` | Low | `0.12.0-alpha.0` | Feature complete enough for broader testing, but API is not yet stable. May have known issues. |
+| `beta` | Medium | `0.12.0-beta.0` | Feature set is frozen; focus is on stabilisation. API should not change unless critical issues are found. |
+| `rc` | High | `0.12.0-rc.0` | Final testing phase before stable. Should be identical to the planned stable release unless blockers are found. |
+| `stable` | Production | `0.12.0` | Production-ready. Follows semver strictly: patch for bug fixes, minor for new features, major for breaking changes. |
+
+Install a pre-release explicitly by specifying the full version or using npm's tag syntax:
+
+```bash
+bun add @canonical/react-ds-global@0.12.0-beta.0
+bun add @canonical/react-ds-global@experimental
+```
+
+<Note>
+  Pre-release versions are not installed automatically when using caret or tilde ranges. A dependency on `^0.11.0` will not update to `0.12.0-experimental.0`.
+</Note>
+
+## Fixed versioning strategy
+
+Pragma uses Lerna's fixed versioning mode. All packages share a single version number stored in `lerna.json`.
+
+When any package changes, all packages receive the same new version number. This eliminates compatibility matrices: if you use `@canonical/react-ds-global@0.11.0`, you know that `@canonical/ds-types@0.11.0` is compatible because they were released together. Internal dependencies between packages use caret ranges (e.g. `^0.11.0`) to accept patch and minor updates automatically.
+
+The alternative, independent versioning, allows each package to have its own version. While this can reduce version churn for unchanged packages, it creates complexity when packages depend on each other. Pragma prioritises simplicity over minimising version numbers.
+
+## Release process
+
+Releases happen through a manual GitHub Actions workflow. Only maintainers with repository write access can trigger releases, and releases only run from the main branch.
+
+<Steps>
+  <Step title="Verify the main branch is clean">
+    Before starting a release, confirm:
+    - You are on the main branch with no uncommitted changes
+    - The latest CI build on main passed
+    - You have determined the appropriate release type
+  </Step>
+
+  <Step title="Trigger the workflow">
+    1. Navigate to **Actions** in the GitHub repository
+    2. Select **"Update package versions"** from the workflow list
+    3. Click **Run workflow**
+    4. Select the release type from the dropdown (`experimental`, `alpha`, `beta`, `rc`, or `stable`)
+    5. Click **Run workflow** to start
+  </Step>
+
+  <Step title="Monitor progress">
+    The workflow takes approximately 5–10 minutes. Monitor progress in the Actions tab.
+
+    The workflow performs these steps in order:
+
+    1. Validates that it is running on the main branch
+    2. Runs the full check suite (Biome, TypeScript, webarchitect)
+    3. Runs all tests
+    4. Analyses commits since the last release to determine version bump
+    5. Updates version numbers in all `package.json` files and `lerna.json`
+    6. Generates or updates `CHANGELOG.md` files
+    7. Commits the version changes
+    8. Creates a git tag (e.g. `v0.12.0`)
+    9. Pushes the commit and tag to the repository
+    10. Publishes all public packages to npm
+
+    If any step fails, the workflow stops and no packages are published.
+  </Step>
+
+  <Step title="Verify the release">
+    After the workflow completes, verify:
+    - The git tag appears in the repository's tag list
+    - Packages appear on npm with the correct version
+    - `CHANGELOG.md` files contain the expected entries
+  </Step>
+</Steps>

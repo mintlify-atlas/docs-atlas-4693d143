@@ -1,0 +1,110 @@
+---
+title: "App Components"
+description: "Application-level UI from @canonical/react-ds-app — higher-level components suited for internal tools and Canonical web applications."
+keywords: ["app", "button", "navigation", "toolbar", "application", "react", "internal tools"]
+---
+
+`@canonical/react-ds-app` provides application-level UI components suited for internal tools and Canonical web applications. Components in this tier are more opinionated than the global tier — they assume an application shell context and may depend on application-specific layout conventions.
+
+<Note>
+  The app tier is the second rung of Pragma's component hierarchy. Components here are not as broadly applicable as the global tier, but they are still framework-agnostic enough to be used across multiple Canonical applications. For domain-specific components tied to a single application (such as Launchpad), see [Svelte Components](/components/svelte).
+</Note>
+
+## Installation
+
+```bash
+bun add @canonical/react-ds-app @canonical/styles
+```
+
+Import styles at your application entry point:
+
+```typescript
+import "@canonical/styles";
+```
+
+## Components
+
+### Button
+
+The app-tier `Button` is a variant of the global `Button` tailored for application interfaces. It uses an `appearance` prop to communicate intent, mapping directly to CSS modifier classes.
+
+```tsx
+import { Button } from "@canonical/react-ds-app";
+
+// Default appearance
+<Button>Click me</Button>
+
+// Positive action (create, confirm, save)
+<Button appearance="positive">Create instance</Button>
+
+// Negative action (delete, remove, disable)
+<Button appearance="negative">Delete</Button>
+
+// Neutral — suitable for secondary actions
+<Button appearance="neutral">View details</Button>
+
+// Base — minimal styling, inherits context
+<Button appearance="base">Cancel</Button>
+
+// Link-styled button
+<Button appearance="link">Learn more</Button>
+```
+
+**Props:**
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `children` | `ReactNode` | Button label. Also used as `aria-label` unless overridden |
+| `appearance` | `"neutral" \| "base" \| "positive" \| "negative" \| "link"` | Visual style of the button |
+| `id` | `string` | Unique identifier |
+| `className` | `string` | Additional CSS classes |
+
+All native `ButtonHTMLAttributes<HTMLButtonElement>` are also accepted.
+
+<Tip>
+  If `children` contains a JSX element rather than a plain string, provide an explicit `aria-label` prop. Otherwise the accessible name will be `[object Object]`.
+</Tip>
+
+### CSS class construction
+
+Like all Pragma components, `Button` constructs its class string by joining defined values:
+
+```tsx
+// Renders: class="ds button positive"
+<Button appearance="positive">Save</Button>
+
+// Renders: class="ds button my-custom-class"
+<Button className="my-custom-class">Save</Button>
+```
+
+Modifier values correspond directly to CSS class names, making it straightforward to inspect and override styles in your application's stylesheet.
+
+## Component tier overview
+
+Pragma organises React components into tiers based on their scope of applicability:
+
+| Tier | Package | Scope |
+|------|---------|-------|
+| Global | `@canonical/react-ds-global` | Universal primitives: Button, Card, Badge, Icon |
+| Global Form | `@canonical/react-ds-global-form` | Form controls with react-hook-form integration |
+| App | `@canonical/react-ds-app` | Application-level UI for internal tools |
+| App/Launchpad | `@canonical/svelte-ds-app-launchpad` | Svelte components for Launchpad-specific UIs |
+
+Any application can consume components from any tier. The tier label describes scope of applicability, not a dependency hierarchy.
+
+## Further reading
+
+<CardGroup cols={2}>
+  <Card title="Global Components" icon="cubes" href="/components/global">
+    Universal UI primitives including Button, Card, Icon, and Tooltip
+  </Card>
+  <Card title="Form Components" icon="input-text" href="/components/forms">
+    Field and Form with react-hook-form integration
+  </Card>
+  <Card title="Svelte Components" icon="bolt" href="/components/svelte">
+    Svelte 5 components for Launchpad applications
+  </Card>
+  <Card title="Package reference" icon="book" href="/reference/react-ds-app">
+    Full API reference for @canonical/react-ds-app
+  </Card>
+</CardGroup>

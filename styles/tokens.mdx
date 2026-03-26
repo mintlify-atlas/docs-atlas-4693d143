@@ -1,0 +1,259 @@
+---
+title: "Design tokens"
+description: "CSS custom properties as design tokens — naming conventions, the nested fallback pattern, and the modifier system."
+sidebarTitle: "Tokens"
+keywords: ["tokens", "CSS custom properties", "design tokens", "modifiers", "theming"]
+---
+
+Design tokens in Pragma are CSS custom properties. There is no compilation step, no token transform pipeline, and no JSON source of truth that must be compiled before use. The tokens you import are the tokens the browser reads.
+
+## Token layers
+
+Tokens are split into three layers, each building on the previous.
+
+### Primitive tokens
+
+Primitive tokens are raw values without semantic meaning. They live in `@canonical/styles-primitives-canonical` and are set on `:root`.
+
+```css
+:root {
+  /* Colour palette */
+  --color-palette-blue: #24598f;
+  --tmp-color-palette-green-8: rgba(14, 132, 32, 1);
+  --tmp-color-palette-red-8: rgba(199, 22, 43, 1);
+
+  /* Spacing scale */
+  --spacing-horizontal-small: 0.5rem;
+  --spacing-horizontal-large: 1rem;
+  --spacing-vertical-medium: 0.75rem;
+
+  /* Typography */
+  --font-size-default: 1rem;
+  --font-weight-default: 400;
+  --line-height-default: 1.5rem;
+}
+```
+
+Primitive tokens carry a `--tmp-` prefix when they are provisional — candidates for a future stable token set. Prefer using semantic tokens (see below) in component styles to insulate yourself from changes to the primitive layer.
+
+### Semantic tokens
+
+Semantic tokens give meaning to primitive values. They are defined in each component's `styles.css` on `:root` and reference primitives through `var()`.
+
+```css
+/* Button/styles.css — component semantic tokens */
+:root {
+  --button-color-background: var(--color-foreground-ghost);
+  --button-color-background-hover: var(--color-foreground-ghost-hover);
+  --button-color-background-active: var(--color-foreground-ghost-active);
+  --button-color-text: var(--color-text);
+  --button-color-border: var(--color-border-high-contrast);
+
+  --button-padding-vertical: var(--spacing-input-padding-vertical);
+  --button-padding-horizontal: var(--spacing-horizontal-large);
+  --button-font-size: var(--font-size-default);
+  --button-font-weight: var(--font-weight-default);
+  --button-line-height: var(--line-height-default);
+}
+```
+
+Naming follows the pattern `--{component}-{property}-{variant}`. Examples:
+
+- `--button-color-background` — background colour of the default button
+- `--button-color-background-hover` — background colour on hover
+- `--button-color-border-active` — border colour in the active state
+- `--button-padding-vertical` — vertical padding
+
+### Modifier tokens
+
+Modifier tokens are set by modifier classes on ancestor elements and override component tokens without touching the component itself. They follow a parallel naming scheme: `--modifier-{property}`.
+
+```css
+/* modifiers.css — importance modifier */
+.primary {
+  --modifier-importance-background: var(--tmp-color-button-primary-background);
+  --modifier-importance-background-hover: var(--tmp-color-button-primary-background-hover);
+  --modifier-importance-text: var(--tmp-color-button-primary-text);
+  --modifier-importance-border: var(--tmp-color-button-primary-border);
+}
+
+/* modifiers.css — anticipation modifier */
+.positive {
+  --modifier-color: var(--color-background-positive-default);
+  --modifier-color-hover: var(--color-background-positive-hover);
+  --modifier-color-text: var(--color-background-positive-text);
+  --modifier-color-border: var(--modifier-color);
+}
+```
+
+## The nested fallback pattern
+
+Components read modifier tokens first, falling back through importance tokens, then to their own semantic tokens. This three-level resolution happens entirely in CSS using nested `var()` fallbacks.
+
+```css
+/* Button/styles.css — colour resolution */
+.ds.button {
+  background-color: var(
+    --modifier-color,                    /* 1. anticipation modifier */
+    var(
+      --modifier-importance-background,  /* 2. importance modifier */
+      var(--button-color-background)     /* 3. component default */
+    )
+  );
+
+  color: var(
+    --modifier-color-text,
+    var(
+      --modifier-importance-text,
+      var(--button-color-text)
+    )
+  );
+
+  border-color: var(
+    --modifier-color-border,
+    var(
+      --modifier-importance-border,
+      var(--button-color-border)
+    )
+  );
+}
+```
+
+Because each step is a CSS fallback, not a runtime conditional, the browser resolves the chain at paint time with zero JavaScript involvement.
+
+## Overriding tokens at the element level
+
+You can override any token at any point in the DOM. Overrides set on an element cascade to all descendants.
+
+**Override a single component instance:**
+
+```css
+/* Override just this button's background */
+.my-hero-section .ds.button {
+  --button-color-background: var(--tmp-color-palette-blue-12);
+}
+```
+
+**Override a whole container:**
+
+```css
+/* All buttons inside .danger-zone read from a custom token */
+.danger-zone {
+  --modifier-color: var(--tmp-color-palette-red-8);
+  --modifier-color-text: var(--tmp-color-palette-white);
+}
+```
+
+**Inline style override in React:**
+
+```tsx
+<Button
+  style={{ "--button-color-background": "#24598f" } as React.CSSProperties}
+>
+  Custom blue button
+</Button>
+```
+
+## The modifier system
+
+Modifiers are plain CSS classes applied to a container. Any `.ds` component inside that container automatically picks up the modifier's token values through the CSS cascade.
+
+### Severity / intent modifiers
+
+The intent modifier family (`positive`, `negative`, `caution`, `information`, `neutral`) signals the expected outcome of an action. Each class sets a group of `--modifier-color-*` tokens.
+
+```css
+.positive {
+  --modifier-color: var(--color-background-positive-default); /* green */
+  --modifier-color-hover: var(--color-background-positive-hover);
+  --modifier-color-text: var(--color-background-positive-text); /* white */
+  --modifier-color-border: var(--modifier-color);
+}
+
+.negative {
+  --modifier-color: var(--color-background-negative-default); /* red */
+  --modifier-color-text: var(--color-background-negative-text); /* white */
+}
+
+.caution {
+  --modifier-color: var(--color-background-caution-default); /* yellow */
+  --modifier-color-text: var(--color-palette-black);
+}
+
+.information {
+  --modifier-color: var(--color-background-information-default); /* blue */
+  --modifier-color-text: var(--color-palette-white);
+}
+```
+
+Applying a modifier class to a React component passes it through the class list:
+
+```tsx
+<Button appearance="positive">Confirm</Button>
+<Button appearance="negative">Delete</Button>
+<Button appearance="caution">Overwrite</Button>
+```
+
+### Importance modifiers
+
+The importance modifier family (`primary`, `secondary`, `tertiary`) controls visual hierarchy. It uses `--modifier-importance-*` tokens instead of `--modifier-color-*` so that severity and hierarchy can be composed independently.
+
+```tsx
+<Button importance="primary" appearance="negative">
+  Delete account
+</Button>
+```
+
+This button reads its background from `--modifier-color` (red, from `negative`) and its border width from `--modifier-importance-border-width` (from `primary`), resolving both at paint time through the nested fallback chain.
+
+<Note>
+  Modifier tokens are intentionally composable. Applying both an intent modifier and an importance modifier to the same element lets components honour both independently.
+</Note>
+
+## Full Button example
+
+The complete `Button/styles.css` shows the full pattern in production use:
+
+```css
+/* Component tokens — sourced from @canonical/design-tokens */
+:root {
+  --button-color-background: var(--color-foreground-ghost);
+  --button-color-text: var(--color-text);
+  --button-color-border: var(--color-border-high-contrast);
+  --button-padding-vertical: var(--spacing-input-padding-vertical);
+  --button-padding-horizontal: var(--spacing-horizontal-large);
+}
+
+.ds.button {
+  background-color: var(
+    --modifier-color,
+    var(--modifier-importance-background, var(--button-color-background))
+  );
+  color: var(
+    --modifier-color-text,
+    var(--modifier-importance-text, var(--button-color-text))
+  );
+  border-color: var(
+    --modifier-color-border,
+    var(--modifier-importance-border, var(--button-color-border))
+  );
+  padding-block: var(--button-padding-vertical);
+  padding-inline: var(--button-padding-horizontal);
+
+  &:hover:not(:disabled) {
+    background-color: var(
+      --modifier-color-hover,
+      var(--modifier-importance-background-hover, var(--button-color-background-hover))
+    );
+  }
+}
+```
+
+<CardGroup cols={2}>
+  <Card title="Modes & theming" icon="moon" href="/styles/modes">
+    Apply colour modes, density variants, and intent classes to containers.
+  </Card>
+  <Card title="Styles overview" icon="paintbrush" href="/styles/overview">
+    Architecture overview and how to import `@canonical/styles` in an app.
+  </Card>
+</CardGroup>

@@ -1,0 +1,67 @@
+---
+title: "Introduction"
+description: "Pragma is Canonical's design system: React and Svelte components, pure CSS styles, design tokens, and developer tooling for building consistent UIs across Canonical's web properties."
+---
+
+Pragma is Canonical's implementation of the [Design System](https://github.com/canonical/design-system). It provides production-ready components, pure CSS styles, and developer tooling for building consistent user interfaces with React 19 and Svelte 5.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Install Pragma and render your first component in minutes
+  </Card>
+  <Card title="Global Components" icon="cubes" href="/components/global">
+    Buttons, Cards, Badges, Tooltips, and more — production-ready UI primitives
+  </Card>
+  <Card title="Philosophy" icon="book-open" href="/philosophy">
+    The eight principles that guide every decision in Pragma
+  </Card>
+  <Card title="Package Reference" icon="box" href="/reference/react-ds-global">
+    API reference for every package in the monorepo
+  </Card>
+</CardGroup>
+
+## Component tier architecture
+
+React components are organised into tiers based on their scope of applicability. The tier indicates how specific a component is to a particular application domain — any application can consume components from any tier.
+
+| Tier | Package | Scope |
+|------|---------|-------|
+| Global | `@canonical/react-ds-global` | Universal components like Button, Badge, Card, and Icon that apply across all contexts. Components are grouped by maturity: **Stable** (production-ready), **Beta** (API may change), and **Experimental** (early-stage). |
+| Global Form | `@canonical/react-ds-global-form` | Form controls including Input, Select, and Checkbox, along with validation patterns and react-hook-form integration. |
+| App | `@canonical/react-ds-app` | Application-level UI such as Navigation and Toolbar, suited for internal tools. |
+| Domain-specific | `@canonical/react-ds-app-launchpad` | Components specific to Launchpad and Workplace Engineering applications. |
+
+## Repository structure
+
+The monorepo uses Lerna for versioning and publishing, with Nx providing task caching and dependency-aware execution.
+
+### Core infrastructure
+
+Three packages provide the foundation that component packages build upon:
+
+- **`@canonical/ds-types`** — TypeScript types for modifier families. `ModifierFamily<'severity'>` resolves to a union of string literals like `'neutral' | 'positive' | 'negative' | 'caution' | 'information'`, providing compile-time safety over design modifiers.
+- **`@canonical/ds-assets`** — Icons and shared visual assets. Icons use a consistent 16×16 viewBox with `currentColor` for fill.
+- **`@canonical/utils`** — Battle-tested utility functions like `debounce` and `throttle`. Functions only enter this package after proving useful across multiple packages.
+
+### Styles architecture
+
+Pragma uses pure CSS with no preprocessors, no CSS-in-JS, and no build-time transformations beyond standard bundling. **`@canonical/styles`** is the aggregator package that imports all style layers in the correct order. Applications typically import only this package.
+
+<CardGroup cols={2}>
+  <Card title="Styles overview" icon="palette" href="/styles/overview">
+    Learn how the layered CSS architecture works
+  </Card>
+  <Card title="Design tokens" icon="circle-half-stroke" href="/styles/tokens">
+    CSS custom properties derived from the Design System Ontology
+  </Card>
+</CardGroup>
+
+### Developer tooling
+
+- **`@canonical/webarchitect`** — Validates that packages conform to architectural standards using JSON Schema-based rulesets.
+- **Summon generators** — Scaffold new components and packages. See [generators](/tooling/generators) for setup and usage.
+- **Storybook** — Runs per-package. Navigate to any component package and run `bun run storybook` to browse components interactively.
+
+<Note>
+  All Pragma packages share a single version number. If you use `@canonical/react-ds-global@0.18.0`, every other Pragma package at `0.18.0` is compatible — no compatibility matrix required.
+</Note>

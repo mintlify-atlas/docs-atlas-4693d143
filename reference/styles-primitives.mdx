@@ -1,0 +1,124 @@
+---
+title: "@canonical/styles-primitives-canonical"
+description: "CSS custom property design tokens — the raw colour, spacing, and typography values that all Pragma components reference."
+sidebarTitle: "styles-primitives"
+---
+
+`@canonical/styles-primitives-canonical` defines the foundational layer of Pragma's design token system. It exports a set of CSS custom properties (variables) that represent raw, context-independent values: colour primitives, spacing scale, surface definitions, and typographic constants. All component styles reference these tokens rather than hard-coded values.
+
+<Note>
+  In most applications you do not need to install this package directly. It is included in `@canonical/styles` and applied as part of the design token import chain. Install it separately only when you need to load tokens without the rest of the stylesheet.
+</Note>
+
+## Installation
+
+```bash
+bun add @canonical/styles-primitives-canonical
+```
+
+## Usage
+
+```css
+@import url("@canonical/styles-primitives-canonical");
+```
+
+With a JavaScript bundler:
+
+```typescript
+import "@canonical/styles-primitives-canonical";
+```
+
+## Token naming convention
+
+Pragma tokens follow a layered naming scheme:
+
+```
+--[namespace]-[category]-[variant]-[state]
+```
+
+| Segment | Description | Example |
+|---------|-------------|--------------------------------------------------------------|
+| `namespace` | Always `ds` for design system | `--ds-` |
+| `category` | Token category | `color`, `space`, `font` |
+| `variant` | Specific value within the category | `positive`, `base`, `accent` |
+| `state` | Optional interaction state | `-hover`, `-active`, `-disabled` |
+
+## Token categories
+
+### Colour
+
+Colour tokens are split into primitive values and semantic aliases.
+
+```css
+/* Primitive — raw swatch */
+--ds-color-ubuntu-orange: #e95420;
+--ds-color-cool-grey-1: #f7f7f7;
+
+/* Semantic — usage-based alias */
+--ds-color-background-default: var(--ds-color-cool-grey-1);
+--ds-color-text-default: var(--ds-color-dark);
+--ds-color-positive: var(--ds-color-green-5);
+--ds-color-negative: var(--ds-color-red-5);
+--ds-color-caution: var(--ds-color-yellow-5);
+--ds-color-information: var(--ds-color-blue-5);
+```
+
+### Spacing
+
+```css
+--ds-space-1: 0.25rem;   /* 4px */
+--ds-space-2: 0.5rem;    /* 8px */
+--ds-space-3: 0.75rem;   /* 12px */
+--ds-space-4: 1rem;      /* 16px */
+--ds-space-6: 1.5rem;    /* 24px */
+--ds-space-8: 2rem;      /* 32px */
+```
+
+### Typography
+
+```css
+--ds-font-family-default: "Ubuntu", sans-serif;
+--ds-font-family-mono: "Ubuntu Mono", monospace;
+--ds-font-size-small: 0.8125rem;   /* 13px */
+--ds-font-size-default: 1rem;      /* 16px */
+--ds-font-size-h1: 2.5rem;
+--ds-line-height-default: 1.5;
+```
+
+## Overriding tokens
+
+Override tokens by redefining the custom property on `:root` or a scoped selector. Because all component styles reference these variables, overrides propagate automatically.
+
+```css
+/* Application-wide override */
+:root {
+  --ds-color-positive: #2d9e6b;
+}
+
+/* Scoped override for a specific section */
+.my-sidebar {
+  --ds-color-background-default: #1d1d1d;
+  --ds-color-text-default: #f7f7f7;
+}
+```
+
+<Warning>
+  Override semantic tokens rather than primitives where possible. Changing `--ds-color-positive` will affect every component that signals a positive state; changing a primitive swatch only affects usages of that exact swatch.
+</Warning>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Styles overview" icon="palette" href="/styles/overview">
+    How the layers fit together
+  </Card>
+  <Card title="Design tokens guide" icon="circle-half-stroke" href="/styles/tokens">
+    Full token reference and naming conventions
+  </Card>
+  <Card title="Modes" icon="sliders" href="/reference/styles-modes">
+    Colour modes and theme switching
+  </Card>
+  <Card title="@canonical/styles" icon="layer-group" href="/reference/styles">
+    Aggregator package that includes primitives automatically
+  </Card>
+</CardGroup>
